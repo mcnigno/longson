@@ -42,12 +42,52 @@ def style_range(ws, cell_range, border=Border(), fill=None, font=None, alignment
             for c in row:
                 c.fill = fill
 
+# Open the Category Code List
+CAT_List = open('xls/lists/Category_List.xlsx', mode='rb')
+wcb = load_workbook(CAT_List, guess_types=True, data_only=True)
+
+sheet_list = wcb.sheetnames
+print('Sheets in Category Code List')
+
+cat_description = {}
+cat_duplicate =[]
+cat_count = 0
+for name in sheet_list[5:]:
+    wcs = wcb[name]
+    #print(name)
+    
+    for row in wcs.iter_rows(min_row=9):
+        if row[1].value is not None: cat_count += 1
+        if row[1].value is not None:
+            print(name ,row[0].value, row[1].value)
+            if row[0].value not in cat_description:
+                cat_description[row[0].value] = row[1].value
+            else: 
+                print(row[0].value, 'is a duplicate??')
+                obj = {
+                    'SheetName': name,
+                    'Code': row[0].value,
+                    'Information': row[1].value,
+                    'Description': row[2].value,
+                    'Duplicate': cat_description[row[0].value]
+                }
+                cat_duplicate.append(obj)
+    print('')        
+    print('the cat count is:', cat_count)
+    print('the len of category codes is:', len(cat_description))
+    print('') 
+    print('List of duplicate codes in category:', cat_duplicate)
+    print('') 
+
+    
+
+
 
 
 # Opent the MDI List
 MDI_list = open('xls/lists/MDI_list.xlsx', mode='rb')
 wlb = load_workbook(MDI_list, guess_types=True, data_only=True)
-wls = wlb.active
+wls = wlb['MDI_LIST']
 
 category_list = set()
 document_list = set() 
@@ -67,7 +107,10 @@ for row in wls.iter_rows(min_row=2):
             'title': row[3].value,
             'org': row[5].value,
             'cat_class': row[6].value,
-            'class': row[7].value
+            'class': row[7].value,
+            'wght': row[8].value,
+            'jan_ref': row[10].value,
+            'mschain': row[11].value
             }
 
 
@@ -80,51 +123,48 @@ for row in wls.iter_rows(min_row=2):
 
     # CAT INDEX
     cat_index[str(row[0].value)] = obj
-    '''
-    if row[2].value in cat_index:
-        cat_index[row[0].value].append(obj)
-    else:
-        cat_index[str(row[0].value)] = [obj]
-    '''
+    
 
-print('index len')
-print('doc index len', len(doc_index))
-print('cat index len', len(cat_index))
-'''
-category.add({
-    'category_code': row[0].value,
-    'document_id' : row[2].value,
-    'org' : row[5].value,
-    'category_class' : row[6].value
-})
-'''
+wjs = wlb['JANUS']
+janus_list = {}
 
-print('there are', len(category_list), 'category and', len(document_list),'documents')
+for row in wjs.iter_rows(min_row=2):
+    milestone = row[2].value
+    jan_ref   = row[1].value
+    mscode    = row[3].value
+
+    obj = {
+        'cumulative'   : row[4].value,
+        'planned_date' : row[5].value,
+        'resched_date' : row[6].value
+    }
+    
+    if milestone not in janus_list:
+        janus_list[milestone] = {
+            jan_ref : {
+                mscode : obj
+            }
+        }
+    elif jan_ref not in janus_list[milestone]: 
+        janus_list[milestone][jan_ref] = {
+            mscode : obj
+        }
+    elif mscode not in janus_list[milestone][jan_ref]:  
+        janus_list[milestone][jan_ref][mscode] = obj
+
+    
+    
+#print('Janus Pivot Objects')
+#print(janus_list)
+print('Janus Test, last row mscode = START:',janus_list['E8307']['M55.F.E8307-05']['START'])
+
+
+print('Document List: ', len(category_list), 'category and', len(document_list),'documents')
 
 # Open the PDB List
 PDB_list = open('xls/lists/PDB_list.xlsx', mode='rb')
 wpb = load_workbook(PDB_list, guess_types=True, data_only=True)
 wps = wpb.active
-
-'''
-for row in wls.iter_rows(min_row=2):
-    doc = row[2].value
-'''
-
-'''
-pdb_hash = []
-
-for row in wps.iter_rows(min_row=2):
-    pdb_hash.append({
-        str(row[2].value) : {
-            'revision': row[4].value,
-            'transmittal': row[6].value,
-            'tans. date': row[7].value,
-            'require_action': row[12].value
-        }
-    })
-print('pdb_hash len', len(pdb_hash))
-'''
 
 pdb_hash = {}
 pdb_hash_cat = {}
@@ -169,8 +209,19 @@ for row in wps.iter_rows(min_row=2):
                 'owner_cmmt': row[8].value[:2]
             }]
 #print(pdb_hash)    
-print('pdb_hash len', len(pdb_hash))
-print('pdb_hash_cat len', len(pdb_hash_cat))
+print('Documents in PDB', len(pdb_hash))
+#print('pdb_hash_cat len', len(pdb_hash_cat))
+
+## Check documents in PDB and NOT in MDI
+pdb_not_in_mdi = []
+
+for doc in pdb_hash:
+    if doc not in document_list:
+        
+        pdb_not_in_mdi.append(doc)
+print('')
+print('Document in PDB but NOT in Document List:')
+for doc in pdb_not_in_mdi: print(doc)
 
 # Open the MDI Template
 MDI_template = open('xls/template/MDR_Template.xlsx', mode='rb')
@@ -183,11 +234,12 @@ end_row = 19
 
 
 fake_label = ['Purpose**','Rev.','Issue Plan','Revised Plan','Issue Actual', 'Transmittal no.', 'Return Date', 'Owner Cmmt*']
-
+janus_not_found = []
 
 for cat, value in cat_index.items():
-    
     cat_code = 'Category Code: ' + cat
+    if cat in cat_description:
+        cat_code = 'Category Code: ' + cat + ' ' + cat_description[cat]
     item = ''
     org = value['org']
     document_no = value['title']
@@ -283,13 +335,35 @@ for cat, value in cat_index.items():
                     
                     purpose = ws.cell(row=tmp_row, column=tmp_col, value=revision['require_action'])
                     rev = ws.cell(row=tmp_row+1, column=tmp_col, value=revision['revision'])
+                    try:
+                        jan_ref = doc_index[doc][0]['jan_ref']
+                        milestone = doc_index[doc][0]['mschain']
+                    except:
+                        print('Wrong Janus reference or milestone chain for this doc', doc)
+                    print(doc,jan_ref,milestone, revision['require_action'])
+                    
+                    issue_plan = ''
+                    revised_plan = ''
+                    
+                    if jan_ref and milestone:
+                        print('jan_ref and mschain found:',jan_ref, milestone)
+                        try:
+                            if revision['require_action'] in janus_list[milestone][jan_ref]:
+                                issue_plan = janus_list[milestone][jan_ref][revision['require_action']]['planned_date']
+                                revised_plan = janus_list[milestone][jan_ref][revision['require_action']]['resched_date']
+                                print(jan_ref,milestone,revision['require_action'],issue_plan, revised_plan)
+                        except:
+                            print(jan_ref,milestone,revision['require_action'], 'NOT FOUND !')
+                            janus_not_found.append([jan_ref,milestone,revision['require_action']])
+                            
+                    
+                    #issue_plan = ws.cell(row=tmp_row+2, column=tmp_col, value=revision['issue_plan'])
+                    
+                    issue_plan = ws.cell(row=tmp_row+2, column=tmp_col, value=issue_plan)
+                    revised_plan = ws.cell(row=tmp_row+3, column=tmp_col, value=revised_plan)
 
-                    issue_plan = ws.cell(row=tmp_row+2, column=tmp_col, value=revision['issue_plan'])
-                    revised_plan = ws.cell(row=tmp_row+3, column=tmp_col, value=revision['revised_plan'])
                     issue_actual = ws.cell(row=tmp_row+4, column=tmp_col, value=revision['trans_date'])
-
                     trans = ws.cell(row=tmp_row+5, column=tmp_col, value=revision['transmittal'])
-
                     return_date = ws.cell(row=tmp_row+6, column=tmp_col, value=revision['return_date'])
                     owner_cmmt = ws.cell(row=tmp_row+7, column=tmp_col, value=revision['owner_cmmt'])
 
@@ -347,8 +421,8 @@ for cat, value in cat_index.items():
         
         start_row += 1
 
-
-
+print('Janus NOT Found List')
+print(janus_not_found)
 wmb.save('xls/MDI_TEST.xlsx')
 
 

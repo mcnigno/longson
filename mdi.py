@@ -1,11 +1,10 @@
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, Border, PatternFill, Color, Side, Alignment, NamedStyle
-
+from collections import OrderedDict
 
 def style_range(ws, cell_range, border=Border(), fill=None, font=None, alignment=None, first_cell=None):
     """
     Apply styles to a range of cells as if they were a single cell.
-
     :param ws:  Excel worksheet instance
     :param range: An excel range to style (e.g. A1:F20)
     :param border: An openpyxl Border
@@ -55,7 +54,6 @@ cat_count = 0
 for name in sheet_list[5:]:
     wcs = wcb[name]
     #print(name)
-    
     for row in wcs.iter_rows(min_row=9):
         if row[1].value is not None: cat_count += 1
         if row[1].value is not None:
@@ -79,10 +77,6 @@ for name in sheet_list[5:]:
     print('List of duplicate codes in category:', cat_duplicate)
     print('') 
 
-    
-
-
-
 
 # Opent the MDI List
 MDI_list = open('xls/lists/MDI_list.xlsx', mode='rb')
@@ -92,8 +86,8 @@ wls = wlb['MDI_LIST']
 category_list = set()
 document_list = set() 
 
-doc_index = {}
-cat_index = {}
+doc_index = OrderedDict()
+cat_index = OrderedDict()
 
 for row in wls.iter_rows(min_row=2):
     #print(row[0].value)
@@ -123,8 +117,8 @@ for row in wls.iter_rows(min_row=2):
 
     # CAT INDEX
     cat_index[str(row[0].value)] = obj
-    
 
+    
 wjs = wlb['JANUS']
 janus_list = {}
 
@@ -152,12 +146,10 @@ for row in wjs.iter_rows(min_row=2):
     elif mscode not in janus_list[milestone][jan_ref]:  
         janus_list[milestone][jan_ref][mscode] = obj
 
-    
-    
+
 #print('Janus Pivot Objects')
 #print(janus_list)
-print('Janus Test, last row mscode = START:',janus_list['E8307']['M55.F.E8307-05']['START'])
-
+#print('Janus Test, last row mscode = START:',janus_list['E8307']['M55.F.E8307-05']['START'])
 
 print('Document List: ', len(category_list), 'category and', len(document_list),'documents')
 
@@ -166,47 +158,53 @@ PDB_list = open('xls/lists/PDB_list.xlsx', mode='rb')
 wpb = load_workbook(PDB_list, guess_types=True, data_only=True)
 wps = wpb.active
 
-pdb_hash = {}
+pdb_hash = OrderedDict()
 pdb_hash_cat = {}
 only_pdb_doc = False
 date_style = NamedStyle(name='datetime', number_format='DD/MM/YYYY')
 
 for row in wps.iter_rows(min_row=2):
     
-    if row[2].value[5:8] in pdb_hash_cat:
-        pdb_hash_cat[row[2].value[5:8]] += 1 
+    if row[5].value[5:8] in pdb_hash_cat:
+        pdb_hash_cat[row[5].value[5:8]] += 1 
     
     else:
-        pdb_hash_cat[row[2].value[5:8]] = 1
+        pdb_hash_cat[row[5].value[5:8]] = 1
 
-    if row[2].value in pdb_hash:
-        pdb_hash[row[2].value].append({
-            'discipline': row[15].value,
-            'document_no': row[2].value,
-            'document_name': row[3].value,
-            'revision': str(row[4].value),
-            'transmittal': row[6].value,
-            'trans_date': row[7].value,
-            'require_action': row[5].value,
+    #if row[13].value[:2] != "Tr":
+    owner_cmmt = row[13].value[:2]
+    if owner_cmmt == "Tr": owner_cmmt = ""
+    
+    if row[5].value in pdb_hash:
+        #print(" ************ Already in PDB Hash")
+        pdb_hash[row[5].value].append({
+            'discipline': row[6].value, #ex PDB List col 15
+            'document_no': row[5].value, #ex PDB List col 2
+            'document_name': row[1].value, #ex PDB List col 3
+            'revision': str(row[2].value), #ex PDB List col 4
+            'transmittal': row[14].value, #ex PDB List col 6
+            'trans_date': row[7].value, #ex PDB List col 7
+            'require_action': row[4].value, #ex PDB List col 5
             'revised_plan': '',
             'issue_plan': '',
-            'return_date': row[9].value,
-            'owner_cmmt': row[8].value[:2]
+            'return_date': row[12].value, #ex PDB List col 9
+            'owner_cmmt': owner_cmmt #row[13].value[:2] #ex PDB List col 3
         })
     else:
+        #print(" ************ NOT in PDB Hash")
         pdb_hash[
-            str(row[2].value)] = [{
-                'discipline': row[15].value,
-                'document_no': row[2].value,
-                'document_name': row[3].value,
-                'revision': str(row[4].value),
-                'transmittal': row[6].value,
-                'trans_date': row[7].value,
-                'require_action': row[5].value,
-                'revised_plan': '',
-                'issue_plan': '',
-                'return_date': row[9].value,
-                'owner_cmmt': row[8].value[:2]
+            str(row[5].value)] = [{
+            'discipline': row[6].value, #ex PDB List col 15
+            'document_no': row[5].value, #ex PDB List col 2
+            'document_name': row[1].value, #ex PDB List col 3
+            'revision': str(row[2].value), #ex PDB List col 4
+            'transmittal': row[14].value, #ex PDB List col 6
+            'trans_date': row[7].value, #ex PDB List col 7
+            'require_action': row[4].value, #ex PDB List col 5
+            'revised_plan': '',
+            'issue_plan': '',
+            'return_date': row[12].value, #ex PDB List col 9
+            'owner_cmmt': owner_cmmt#row[13].value[:2] #ex PDB List col 3
             }]
 #print(pdb_hash)    
 print('Documents in PDB', len(pdb_hash))
@@ -221,17 +219,30 @@ for doc in pdb_hash:
         pdb_not_in_mdi.append(doc)
 print('')
 print('Document in PDB but NOT in Document List:')
-for doc in pdb_not_in_mdi: print(doc)
+
+list_prev = Workbook()
+list_prev_s = list_prev.active
+list_previsional = []
+for doc in doc_index:
+    if doc not in pdb_hash:
+        print(doc_index[doc][0]['org'],doc, doc_index[doc][0]['title'], doc_index[doc][0]['class'])
+        row = [doc_index[doc][0]['org'],doc, doc_index[doc][0]['title'], doc_index[doc][0]['class']]
+
+        list_previsional.append(doc)
+        list_prev_s.append(row)
+list_prev.save("lista_prev.xlsx")
+print("prevision list len", len(list_previsional))
+#print(list_previsional)
+
+for doc in pdb_not_in_mdi: print(doc, pdb_hash[doc][0]['document_name'])
 
 # Open the MDI Template
 MDI_template = open('xls/template/MDR_Template.xlsx', mode='rb')
 wmb = load_workbook(MDI_template, guess_types=True, data_only=True)
 ws = wmb.active
 
-
 start_row = 11
 end_row = 19
-
 
 fake_label = ['Purpose**','Rev.','Issue Plan','Revised Plan','Issue Actual', 'Transmittal no.', 'Return Date', 'Owner Cmmt*']
 janus_not_found = []
@@ -287,9 +298,9 @@ for cat, value in cat_index.items():
             x += 1
 
         
-        # Set Catecory Code
+        # Set Category Code
         doc_counter = 0
-        for doc, revisions in pdb_hash.items():
+        for doc, revisions in sorted(pdb_hash.items()):
             if doc[5:8] == cat:
                 doc_counter += 1
                 
@@ -340,20 +351,20 @@ for cat, value in cat_index.items():
                         milestone = doc_index[doc][0]['mschain']
                     except:
                         print('Wrong Janus reference or milestone chain for this doc', doc)
-                    print(doc,jan_ref,milestone, revision['require_action'])
+                    #print(doc,jan_ref,milestone, revision['require_action'])
                     
                     issue_plan = ''
                     revised_plan = ''
                     
                     if jan_ref and milestone:
-                        print('jan_ref and mschain found:',jan_ref, milestone)
+                        #print('jan_ref and mschain found:',jan_ref, milestone)
                         try:
                             if revision['require_action'] in janus_list[milestone][jan_ref]:
                                 issue_plan = janus_list[milestone][jan_ref][revision['require_action']]['planned_date']
                                 revised_plan = janus_list[milestone][jan_ref][revision['require_action']]['resched_date']
-                                print(jan_ref,milestone,revision['require_action'],issue_plan, revised_plan)
+                                #print(jan_ref,milestone,revision['require_action'],issue_plan, revised_plan)
                         except:
-                            print(jan_ref,milestone,revision['require_action'], 'NOT FOUND !')
+                            #print(jan_ref,milestone,revision['require_action'], 'NOT FOUND !')
                             janus_not_found.append([jan_ref,milestone,revision['require_action']])
                             
                     
@@ -414,8 +425,8 @@ for cat, value in cat_index.items():
                 style_range(ws, doc_name_range, border=border, alignment=al, first_cell=ws.cell(start_row+1,4))
                 style_range(ws, doc_class_range, border=border, alignment=v_al,first_cell=ws.cell(start_row+1,6))
                 '''
-
                 
+                print(tmp_row)
                 
                 start_row += 8
         
@@ -424,7 +435,6 @@ for cat, value in cat_index.items():
 print('Janus NOT Found List')
 print(janus_not_found)
 wmb.save('xls/MDI_TEST.xlsx')
-
 
 
 

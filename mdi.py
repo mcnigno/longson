@@ -166,6 +166,7 @@ date_style = NamedStyle(name='datetime', number_format='DD/MM/YYYY')
 for row in wps.iter_rows(min_row=2):
     
     if row[5].value[5:8] in pdb_hash_cat:
+        print(row[5].value)
         pdb_hash_cat[row[5].value[5:8]] += 1 
     
     else:
@@ -179,6 +180,7 @@ for row in wps.iter_rows(min_row=2):
         #print(" ************ Already in PDB Hash")
         pdb_hash[row[5].value].append({
             'discipline': row[6].value, #ex PDB List col 15
+            'document_reference': row[0].value,
             'document_no': row[5].value, #ex PDB List col 2
             'document_name': row[1].value, #ex PDB List col 3
             'revision': str(row[2].value), #ex PDB List col 4
@@ -195,6 +197,7 @@ for row in wps.iter_rows(min_row=2):
         pdb_hash[
             str(row[5].value)] = [{
             'discipline': row[6].value, #ex PDB List col 15
+            'document_reference': row[0].value,
             'document_no': row[5].value, #ex PDB List col 2
             'document_name': row[1].value, #ex PDB List col 3
             'revision': str(row[2].value), #ex PDB List col 4
@@ -234,7 +237,7 @@ list_prev.save("lista_prev.xlsx")
 print("prevision list len", len(list_previsional))
 #print(list_previsional)
 
-for doc in pdb_not_in_mdi: print(doc, pdb_hash[doc][0]['document_name'])
+for doc in pdb_not_in_mdi: print(doc, pdb_hash[doc][0]['document_name'],";", pdb_hash[doc][0]['document_reference'])
 
 # Open the MDI Template
 MDI_template = open('xls/template/MDR_Template.xlsx', mode='rb')
@@ -426,7 +429,7 @@ for cat, value in cat_index.items():
                 style_range(ws, doc_class_range, border=border, alignment=v_al,first_cell=ws.cell(start_row+1,6))
                 '''
                 
-                print(tmp_row)
+                #print(tmp_row)
                 
                 start_row += 8
         

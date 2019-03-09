@@ -64,6 +64,7 @@ def janus_upload():
             janus_not_in_document_list.append(janus)
     
     session.commit()
+    
     print('Janus document not in document list')
     print(janus_not_in_document_list)
 

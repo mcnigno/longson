@@ -1,4 +1,4 @@
-from .models import Janus, Doc_list, Pdb, WrongReferences, Category
+from .models import Janus, Doc_list, Pdb, Category
 from app import db
 from datetime import datetime
 import openpyxl
@@ -13,7 +13,7 @@ def janus_upload():
     
     row_number = 0
 
-    
+    doc_list = [x.client_reference for x in session.query(Doc_list).all()]
     
     for line in janus_file:
         
@@ -33,7 +33,7 @@ def janus_upload():
     
             linenumber = row[0],
             cat = row[1],
-            client_reference = row[8],
+            doc_reference = row[2],
             weight = row[9],
             title = row[11],
             milestone_chain = row[12],
@@ -52,14 +52,14 @@ def janus_upload():
         )
     
         janus.created_by_fk = '1'
-        janus.doc_reference_id = row[2]
+        janus.client_reference_id = row[8]
 
         # Check if the janus doc is or not in document list
         
-        if session.query(Doc_list).filter(Doc_list.doc_reference == row[2]).first():
+        if row[8] in doc_list:
             session.add(janus)
         else:
-            janus.doc_reference_id = 'wrong_ref'
+            janus.client_reference_id = 'wrong_client_ref'
             session.add(janus)
             janus_not_in_document_list.append(janus)
     
@@ -67,6 +67,7 @@ def janus_upload():
     
     print('Janus document not in document list')
     print(janus_not_in_document_list)
+    return 'Janus updated!'
 
 def date_parse(date):
     
@@ -79,13 +80,13 @@ def document_list_upload():
     session = db.session
     doclist = openpyxl.load_workbook('./liste/doclist.xlsx')
     doclist_ws = doclist.active
- 
-    
-                
+    count_id = 0
+    wrong_ref =  session.query(Doc_list).filter(Doc_list.client_reference == 'wrong_client_ref').first()
+    empty_client_references =  session.query(Doc_list).filter(Doc_list.client_reference == 'EmptyClientReferences').first()            
     for row in doclist_ws.iter_rows(min_row=2):
+        
         doclist_row = Doc_list(
             cat = row[0].value,
-            client_reference = row[2].value,
             title = row[3].value,
             org = row[5].value,
             cat_class = row[6].value,
@@ -94,25 +95,39 @@ def document_list_upload():
             doc_reference = row[12].value
         )
         doclist_row.created_by_fk = '1'
+        if row[2].value is None:
+            count_id += 1
+            doclist_row.client_reference = 'EmptyClientReferences' + str(count_id)
+        else:
+            doclist_row.client_reference = row[2].value
         session.add(doclist_row)
+        # Check if Wrong References Doc for Janus exist, otherwise add it
 
+        
+        if wrong_ref is None:
+            wrong_ref = Doc_list()
+            wrong_ref.created_by_fk = '1'
+            wrong_ref.client_reference = 'wrong_client_ref'
+            session.add(wrong_ref)
     session.commit()
+    return 'Document List updated!'
     
 def pdb_list_upload():
     session = db.session
     pdblist = openpyxl.load_workbook('./liste/pdb.xlsx')
     pdblist_ws = pdblist.active
  
+    doc_list = [x.client_reference for x in session.query(Doc_list).all()]
     
                 
     for row in pdblist_ws.iter_rows(min_row=2):
         pdb = Pdb(
-            
+            doc_reference = row[0].value,
             title = row[1].value,
             revision_number = row[2].value,
             revision_date = date_parse(row[3].value),
             document_revision_object = row[4].value,
-            client_reference = row[5].value,
+            
             discipline = row[6].value,
             transmittal_date = date_parse(row[7].value),
             transmittal_reference = row[8].value,
@@ -125,18 +140,23 @@ def pdb_list_upload():
             remarks = row[15].value,
         )
         pdb.created_by_fk = '1'
-        pdb.doc_reference_id = row[0].value
+        pdb.client_reference_id = row[5].value
+        
 
         # Check if the pdb doc is or not in document list
-        
-        if session.query(Doc_list).filter(Doc_list.doc_reference == row[0].value).first():
+        '''
+        if session.query(Doc_list).filter(Doc_list.client_reference == row[5].value).first():
+            session.add(pdb)
+        '''
+        if row[5].value in doc_list:
             session.add(pdb)
         else:
-            pdb.doc_reference_id = 'wrong_ref'
+            pdb.client_reference_id = 'wrong_client_ref'
             session.add(pdb)
             pdb_not_in_document_list.append(pdb)
 
     session.commit()
+    return 'PDB updated!'
     #print('Pdb document not in document list')
     #print(pdb_not_in_document_list)
 
@@ -155,7 +175,7 @@ def category_upload():
         wcs = wcb[name]
         #print(name)
         for row in wcs.iter_rows(min_row=9):
-            print(row[0].value,row[1].value,row[2].value)
+            #print(row[0].value,row[1].value,row[2].value)
             
             if row[1].value is not None:
                 cat = Category(
@@ -171,6 +191,7 @@ def category_upload():
     except:
         flash('Something Went Wrong: Check you Category file! Row starts at line 9.')
 
+    return 'category done!'
     '''
                 print(name ,row[0].value, row[1].value)
                 if row[0].value not in cat_description:
@@ -192,3 +213,41 @@ def category_upload():
         print('List of duplicate codes in category:', cat_duplicate)
         print('') 
     '''
+
+def update_all():
+    session = db.session
+    
+    deleted_pdb = session.query(Pdb).delete()
+    
+    deleted_janus = session.query(Janus).delete()
+    deleted_cat = session.query(Category).delete()
+    deleted_doc = session.query(Doc_list).delete()
+    
+    session.commit()
+
+    doc = document_list_upload()
+    print('Deleted',deleted_pdb, 'rows from pdb, row now in pdb:', len(session.query(Pdb).all()))
+    pdb = pdb_list_upload()
+    print('Uploaded pdb, number of row', len(session.query(Pdb).all()))
+
+    janus = janus_upload()
+    cat = category_upload()
+    
+
+    
+    return doc, pdb, janus, cat
+
+def check_pdb_not_in_janus():
+    print('Check PDB Vs Janus')
+    session = db.session
+    #document_list = session.query(Doc_list).all()
+    janus_list = session.query(Janus).all()
+    pdb_list = session.query(Pdb).all()
+    janus_ref = [x.client_reference for x in janus_list]
+
+    for doc in pdb_list:
+        #print(doc.client_reference)
+        if doc.client_reference not in janus_ref:
+            print('pdb and janus match', doc.client_reference, doc.revision_number, doc.client_reference)
+    
+    return 

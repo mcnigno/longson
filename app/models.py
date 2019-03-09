@@ -1,6 +1,6 @@
 from flask_appbuilder import Model
 from flask_appbuilder.models.mixins import AuditMixin, FileColumn, ImageColumn
-from sqlalchemy import Column, Integer, String, ForeignKey, Date, Text 
+from sqlalchemy import Column, Integer, String, ForeignKey, Date, Text, Boolean
 from sqlalchemy.orm import relationship
 
 
@@ -16,8 +16,8 @@ TITLE	MILESTONE CHAIN	DBS	WBS	FREE CRITERIA 1	FREE CRITERIA 2	FREE CRITERIA 3	FR
 class Doc_list(Model):
     #id = Column(Integer, primary_key=True, autoincrement=True)
     cat = Column(String(4))
-    doc_reference = Column(String(50), primary_key=True, unique=True)
-    client_reference = Column(String(50))
+    client_reference = Column(String(50), primary_key=True, unique=True)
+    doc_reference = Column(String(50))
     title = Column(String(255))
    
     org = Column(String(50))
@@ -26,17 +26,23 @@ class Doc_list(Model):
     weight = Column(Integer)
 
     def __repr__(self):
-        return self.doc_reference
-
+        return self.client_reference
+    '''
+    def pdb_items(self):
+        return int(len(self.pdb))
+    
+    def janus_items(self):
+        return len(self.janus)
+    '''
 class Janus(Model):
     id = Column(Integer, primary_key=True)
     linenumber = Column(Integer)
     cat = Column(String(4))
 
-    doc_reference_id = Column(String(50), ForeignKey('doc_list.doc_reference'), nullable=False)
-    doc_reference = relationship(Doc_list, backref='janus')
+    client_reference_id = Column(String(50), ForeignKey('doc_list.client_reference'), nullable=False)
+    client_reference = relationship(Doc_list)#, backref='janus', lazy='selectin')
 
-    client_reference = Column(String(50))
+    doc_reference = Column(String(50))
     weight = Column(Integer)
     title = Column(String(255))
     milestone_chain = Column(String(50))
@@ -54,18 +60,19 @@ class Janus(Model):
     actual_date = Column(Date)
 
     def __repr__(self):
-        return str(self.doc_reference) + self.mscode
+        return str(self.client_reference) + self.mscode
 
 
 class Pdb(Model):
     id = Column(Integer, primary_key=True)
-    doc_reference_id = Column(String(50), ForeignKey('doc_list.doc_reference'), nullable=False)
-    doc_reference = relationship(Doc_list, backref='pdb')
+    client_reference_id = Column(String(50), ForeignKey('doc_list.client_reference'), nullable=False)
+    client_reference = relationship(Doc_list)#, backref='pdb', lazy='selectin')
+    
     title = Column(String(255))
     revision_number = Column(String(10))
     revision_date = Column(Date)
     document_revision_object = Column(String(255))
-    client_reference = Column(String(255))
+    doc_reference = Column(String(255))
     discipline = Column(String(5))
     transmittal_date = Column(Date)
     transmittal_reference = Column(String(255))
@@ -80,7 +87,13 @@ class Pdb(Model):
     def __repr__(self):
         return self.client_reference + ' Rev. ' + self.revision_number
 
+class PDB_no_Progress(Model):
+    doc_reference = Column(String(50), primary_key=True, unique=True)
+    client_reference = Column(String(50))
+    title = Column(String(255))
 
+    def __repr__(self):
+        return self.client_reference
 
 class Mscode(Model):
     id = Column(Integer, primary_key=True)
@@ -88,9 +101,7 @@ class Mscode(Model):
     mscode = Column(String(10))
     description = Column(String(255))
 
-class WrongReferences(Model):
-    id = Column(Integer, primary_key=True)
-    doc_reference = Column(String(255))
+
 
 class Category(Model):
     id = Column(Integer, primary_key=True)

@@ -1,0 +1,14 @@
+{% extends "appbuilder/base.html" %}
+{% block content %}
+<h2><center>Setting Status<center></h2>
+    <p><center></center>Deleted {{deleted_doc}}, New {{doc}}<center></center></p>
+    <p><center></center>Deleted {{deleted_pdb}}, New {{pdb}}<center></center></p>
+    <p><center></center>Deleted {{deleted_janus}}, New {{janus}}<center></center></p>
+    <p><center></center>Deleted {{deleted_cat}}, New {{cat}}<center></center></p>
+<br>
+<h2><center>PDB Document Not in Janus<center></h2>
+
+    {% for doc in pdb_not_in_janus %}
+        <p><center>{{doc.doc_reference}}<center></p>
+    {% endfor %}
+{% endblock %}

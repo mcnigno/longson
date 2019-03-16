@@ -1,0 +1,190 @@
+/*h1 {
+    color: red !important;
+}
+
+.navbar-inverse {
+    background-image: linear-gradient(#ec0040, #c50333 60%, #c10036);
+}
+
+body {
+    background-color: #c10036;
+}
+
+.navbar-inverse {
+    background-image: linear-gradient(#e9242d, #e9242d 60%, #e9242d);
+
+}
+.dropzone {
+    min-height: 150px;
+    border: 2px solid rgba(0, 0, 0, 0.3);
+    background:darkred;
+    padding: 20px 20px;
+}
+
+.logo {
+    text-align: center;
+}
+.navbar-inverse .navbar-nav>li>a {
+    color:white;
+}
+body {
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-size: 14px;
+    line-height: 1.42857143;
+    color: #c8c8c8;
+    background-color: #272b30;
+}
+.container {
+    height: 100%;
+}
+*/
+.navbar-inverse {
+    background-color: #2f4b60;
+}
+
+.pagination>.active>a, .pagination>.active>span, .pagination>.active>a:hover, .pagination>.active>span:hover, .pagination>.active>a:focus, .pagination>.active>span:focus {
+    z-index: 3;
+    color: #ffffff;
+    background-color: #4b1f68;
+    border-color: transparent;
+    cursor: default;
+}
+
+
+table {
+    font-size: 14px;
+}
+p#rev{
+    text-align: center;
+    
+
+}
+p#rev_current{
+    text-align: center;
+    color: #ffffff;
+    background-color: #4b1f68
+
+}
+#chartbox{
+    color: #333333;
+    background-color: #ebf0f1;
+    width: 30%;
+    text-align: center;
+    
+
+}
+#pivotbox{
+    color: #b9139e;
+    width: 30%;
+
+}
+
+#doc_info_row{
+    height: 10%;
+}
+#doc_info_label{
+    padding-left: 25px;
+}
+#DataTables_Table_0_wrapper > div:nth-child(2) > div > div > div.dataTables_scrollHead > div > table{
+    width: 300px;
+    border-width: 0px;
+    color: #c60201;
+}
+
+
+
+
+.dash_iframe iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width:100%;
+    height:100%;
+    
+}
+.dash_iframe {
+    height: 4040px;
+    width:100%;
+    position: relative;
+    padding-bottom: 56.25%;
+}
+
+.search-container {
+    float: right;
+  }
+.search-container button {
+    float: right;
+    padding: 6px 10px;
+    margin-top: 8px;
+    margin-right: 16px;
+    background: #ddd;
+    font-size: 17px;
+    border: none;
+    cursor: pointer;
+    color: #1eafa3;
+  }
+
+.search-container button:hover {
+    background: #ccc;
+  }
+  
+@media screen and (max-width: 600px) {
+    .topnav .search-container {
+      float: none;
+    }
+    .topnav a, .topnav input[type=text], .topnav .search-container button {
+      float: none;
+      display: block;
+      text-align: left;
+      width: 100%;
+      margin: 0;
+      padding: 14px;
+      color: #18bc9c;
+    }
+    .topnav input[type=text] {
+      border: 1px solid #ccc;  
+    }
+}
+
+input#search_input{
+    
+    border: azure;
+    border-radius: 3px;
+    color: #254b62;
+    height: 36px;
+    /* width: 70%; */
+    margin-top: 8px;
+    margin-right: 2px;
+    background-color: #ebf0f1;
+
+}
+::-webkit-input-placeholder { /* WebKit, Blink, Edge */
+    color:    #ffffff;
+}
+:-moz-placeholder { /* Mozilla Firefox 4 to 18 */
+   color:    #ffffff;
+   opacity:  1;
+}
+::-moz-placeholder { /* Mozilla Firefox 19+ */
+   color:    #ffffff;
+   opacity:  1;
+}
+:-ms-input-placeholder { /* Internet Explorer 10-11 */
+   color:    #4a6286;
+}
+::-ms-input-placeholder { /* Microsoft Edge */
+   color:    #ffffff;
+}
+
+::placeholder { /* Most modern browsers support this now. */
+   color:    #ffffff;
+}
+
+.table-bordered>thead>tr>th, .table-bordered>tbody>tr>th, .table-bordered>tfoot>tr>th, .table-bordered>thead>tr>td, .table-bordered>tbody>tr>td, .table-bordered>tfoot>tr>td {
+    border: 1px solid #ecf0f1;
+    max-width: 600px;
+}
+
+#slice-container-157{
+    background-color: #dddddd;
+}

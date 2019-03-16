@@ -1,13 +1,15 @@
-from flask import render_template, redirect, request
+from flask import render_template, redirect, request, flash
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_appbuilder import ModelView, BaseView, expose, has_access, action
 from app import appbuilder, db
 from flask_appbuilder.models.sqla.filters import FilterEqual, FilterNotContains, FilterGreater
-from .models import Doc_list, Janus, Pdb, Mscode, Category, PDB_no_Progress
+from .models import Doc_list, Janus, Pdb, Mscode, Category, PDB_no_Progress, SourceFiles, Sourcetype
 
 from .helpers import (janus_upload, document_list_upload, pdb_list_upload,
-                    category_upload, update_all, check_pdb_not_in_janus)
-
+                    category_upload, update_all, check_pdb_not_in_janus,
+                    init_file_type)
+from flask_appbuilder.filemanager import get_file_original_name
+from config import UPLOAD_FOLDER
 """
     Create your Views::
 
@@ -25,7 +27,10 @@ from .helpers import (janus_upload, document_list_upload, pdb_list_upload,
 """
     Application wide 404 error handler
 """
-
+class WrongPdbView(ModelView):
+    datamodel = SQLAInterface(Pdb)
+    list_columns = ['ex_client_reference', 'doc_reference','revision_number', 'required_action']
+    
 
 class PdbView(ModelView):
     datamodel = SQLAInterface(Pdb)
@@ -82,12 +87,10 @@ class CategoryView(ModelView):
 class WrongDocRefView(ModelView):
     datamodel = SQLAInterface(Doc_list)
     base_filters = [['client_reference', FilterEqual, 'wrong_client_ref']]
-    related_views = [JanusView, PdbView]
+    related_views = [JanusView, WrongPdbView]
     show_template = 'appbuilder/general/model/show_cascade.html'
     list_columns = ['title']
     show_columns = ['title']
-
-
 
 class PDB_no_ProgressView(ModelView):
     datamodel = SQLAInterface(PDB_no_Progress)
@@ -96,43 +99,57 @@ class PDB_no_ProgressView(ModelView):
 class Setting_updateView(BaseView):
     default_view = 'upload_setting'
 
-    @expose('/setting/', methods=['POST','GET'])
+    @expose('/setting/', methods=['GET'])
     @has_access
     def upload_setting(self):
-        if request.method == 'POST':
-            doc, pdb, janus, cat = update_all()
-            return self.render_template('setting_up.html',
-                                        filename=filename_list,
-                                        updated_list=updated_list,
-                                        count_updated=len(updated_list),
-                                        reserved_list=reserved_list,
-                                        count_reserved=len(reserved_list))
-          
-        return self.render_template('setting_up.html')
+        doc, pdb, janus, cat, deleted_doc, deleted_pdb, deleted_janus, deleted_cat = update_all()
+        pdb_not_in_janus = check_pdb_not_in_janus()
+        return self.render_template('setting_status.html',
+                                doc = doc,
+                                pdb = pdb,
+                                janus = janus,
+                                cat = cat,
+                                deleted_doc = deleted_doc,
+                                deleted_pdb = deleted_pdb,
+                                deleted_janus = deleted_janus,
+                                deleted_cat = deleted_cat,
+                                pdb_not_in_janus = pdb_not_in_janus
+                                )
+            
+ 
+class SourceFileTypeView(ModelView):
+    datamodel = SQLAInterface(Sourcetype)
 
-
-
+class SourceFilesView(ModelView):
+    datamodel = SQLAInterface(SourceFiles)
+    add_columns = ['source_type','file_source','description']
+    
 @appbuilder.app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html', base_template=appbuilder.base_template, appbuilder=appbuilder), 404
 
 db.create_all()
-appbuilder.add_view(DocumentListView, "Document", icon="fa-folder-open-o", category="List", category_icon='fa-envelope')
 
+appbuilder.add_view(DocumentListView, "Document", icon="fa-folder-open-o", category="List", category_icon='fa-envelope')
 appbuilder.add_view(JanusView, "Janus", icon="fa-folder-open-o", category="List", category_icon='fa-envelope')
 appbuilder.add_view(PdbView, "PDB", icon="fa-folder-open-o", category="List", category_icon='fa-envelope')
 appbuilder.add_view(PDB_no_ProgressView, "PDB Not In Progress", icon="fa-folder-open-o", category="List", category_icon='fa-envelope')
-
-appbuilder.add_view(MscodeView, "Milestones", icon="fa-folder-open-o", category="Setting", category_icon='fa-envelope')
 appbuilder.add_view(WrongDocRefView, "Wrong References", icon="fa-folder-open-o", category="List", category_icon='fa-envelope')
+appbuilder.add_view_no_menu(WrongPdbView)
+appbuilder.add_view(SourceFilesView, "Source File", icon="fa-folder-open-o", category="Setting", category_icon='fa-envelope')
+appbuilder.add_view(SourceFileTypeView, "File Type", icon="fa-folder-open-o", category="Setting", category_icon='fa-envelope')
+appbuilder.add_view(MscodeView, "Milestones", icon="fa-folder-open-o", category="Setting", category_icon='fa-envelope')
 appbuilder.add_view(CategoryView, "Category", icon="fa-folder-open-o", category="Setting", category_icon='fa-envelope')
- 
+appbuilder.add_separator(category='Setting')
+appbuilder.add_view(Setting_updateView, "Setting Update", icon="fa-folder-open-o", category="Setting", category_icon='fa-envelope')
+
 
 #document_list_upload()
 #janus_upload()
 #pdb_list_upload()
-#category_upload()
+#category_upload() 
 #update_all()  
-#check_pdb_not_in_janus()  
+#check_pdb_not_in_janus()
+#init_file_type()  
  
  

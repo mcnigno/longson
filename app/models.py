@@ -36,7 +36,7 @@ class Doc_list(Model):
     '''
 class Janus(Model):
     id = Column(Integer, primary_key=True)
-    linenumber = Column(Integer)
+    linenumber = Column(String(4))
     cat = Column(String(4))
 
     client_reference_id = Column(String(50), ForeignKey('doc_list.client_reference'), nullable=False)
@@ -67,7 +67,7 @@ class Pdb(Model):
     id = Column(Integer, primary_key=True)
     client_reference_id = Column(String(50), ForeignKey('doc_list.client_reference'), nullable=False)
     client_reference = relationship(Doc_list)#, backref='pdb', lazy='selectin')
-    
+    ex_client_reference = Column(String(50))
     title = Column(String(255))
     revision_number = Column(String(10))
     revision_date = Column(Date)
@@ -80,7 +80,7 @@ class Pdb(Model):
     required_action = Column(String(10))
     response_due_date = Column(Date)
     actual_response_date = Column(Date)
-    document_status = Column(String(50))
+    document_status = Column(String(255))
     client_transmittal_ref_number = Column(String(255))
     remarks = Column(String(255))
 
@@ -102,13 +102,34 @@ class Mscode(Model):
     description = Column(String(255))
 
 
-
 class Category(Model):
     id = Column(Integer, primary_key=True)
     sheet_name = Column(String(10))
     code = Column(String(255))
     information = Column(String(255))
-    description = Column(String(255))
+    description = Column(Text)
+
+class Sourcetype(Model):
+    id = Column(Integer, primary_key=True)
+    source_type = Column(String(50))
+    description = Column(Text)
+
+    def __repr__(self):
+        return self.source_type
+
+
+class SourceFiles(Model, AuditMixin):
+    id = Column(Integer, primary_key=True)
+    file_source = Column(FileColumn())
+    source_type_id = Column(Integer, ForeignKey('sourcetype.id'),nullable=False)
+    source_type = relationship(Sourcetype)
+    description = Column(Text)
+
+    def __repr__(self):
+        return self.file_source
+    
+
+
 
 
 

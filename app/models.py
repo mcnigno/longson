@@ -11,8 +11,9 @@ You can use the extra Flask-AppBuilder fields and Mixin's
 
 AuditMixin will add automatic timestamp of created and modified by who
 
-TITLE	MILESTONE CHAIN	DBS	WBS	FREE CRITERIA 1	FREE CRITERIA 2	FREE CRITERIA 3	FREE CRITERIA 4	MSCODE	CUMULATIVE	MANUFACTURING CUMULATIVE	EMPTY COL	OBS	INITIAL PLAN DATE	REVISED PLAN DATE	FORECAST DATE	ACTUAL DATE
 """
+
+
 class Doc_list(Model):
     #id = Column(Integer, primary_key=True, autoincrement=True)
     cat = Column(String(4))
@@ -24,9 +25,34 @@ class Doc_list(Model):
     cat_class = Column(String(50))
     class_two = Column(String(50))
     weight = Column(Integer)
+    mdi = Column(Boolean, default=True)
+    note = Column(String(255))
 
+    project = Column(String(50))
+    unit = Column(String(50))
+    doc_type = Column(String(50))
+    m_class = Column(String(50))
+    prog = Column(String(50))
+
+    
+    def __init__(self, **kwargs):
+        super(Doc_list, self).__init__(**kwargs)
+        doc_ref_fields = str(self.doc_reference).split('-')
+        if len(doc_ref_fields) == 5:
+            self.project = doc_ref_fields[0]
+            self.unit = doc_ref_fields[1]
+            self.doc_type = doc_ref_fields[2]
+            self.m_class = doc_ref_fields[3]
+            self.prog = doc_ref_fields[4]
+        else:
+            self.note = 'Document Code Error' 
+            self.mdi = False
+
+    
     def __repr__(self):
         return self.client_reference
+    
+    
     '''
     def pdb_items(self):
         return int(len(self.pdb))
@@ -34,13 +60,16 @@ class Doc_list(Model):
     def janus_items(self):
         return len(self.janus)
     '''
+
+
 class Janus(Model):
     id = Column(Integer, primary_key=True)
     linenumber = Column(String(4))
     cat = Column(String(4))
 
-    client_reference_id = Column(String(50), ForeignKey('doc_list.client_reference'), nullable=False)
+    client_reference_id = Column(String(50), ForeignKey('doc_list.client_reference'))
     client_reference = relationship(Doc_list)#, backref='janus', lazy='selectin')
+    ex_client_reference = Column(String(50))
 
     doc_reference = Column(String(50))
     weight = Column(Integer)
@@ -51,13 +80,18 @@ class Janus(Model):
     fcr_one = Column(String(50))
     fcr_two = Column(String(50))
     fcr_three = Column(String(50))
+    fcr_four = Column(String(50))
     mscode = Column(String(50))
     cumulative = Column(String(50))
     obs = Column(String(50))
+
     initial_plan_date = Column(Date)
     revised_plan_date = Column(Date)
     forecast_date = Column(Date)
     actual_date = Column(Date)
+    planned_date = Column(Date)
+
+    note = Column(String(255))
 
     def __repr__(self):
         return str(self.client_reference) + self.mscode
@@ -65,7 +99,7 @@ class Janus(Model):
 
 class Pdb(Model):
     id = Column(Integer, primary_key=True)
-    client_reference_id = Column(String(50), ForeignKey('doc_list.client_reference'), nullable=False)
+    client_reference_id = Column(String(50), ForeignKey('doc_list.client_reference'))
     client_reference = relationship(Doc_list)#, backref='pdb', lazy='selectin')
     ex_client_reference = Column(String(50))
     title = Column(String(255))
@@ -83,17 +117,11 @@ class Pdb(Model):
     document_status = Column(String(255))
     client_transmittal_ref_number = Column(String(255))
     remarks = Column(String(255))
+    note = Column(String(255))
 
     def __repr__(self):
         return self.client_reference + ' Rev. ' + self.revision_number
 
-class PDB_no_Progress(Model):
-    doc_reference = Column(String(50), primary_key=True, unique=True)
-    client_reference = Column(String(50))
-    title = Column(String(255))
-
-    def __repr__(self):
-        return self.client_reference
 
 class Mscode(Model):
     id = Column(Integer, primary_key=True)
@@ -108,6 +136,7 @@ class Category(Model):
     code = Column(String(255))
     information = Column(String(255))
     description = Column(Text)
+
 
 class Sourcetype(Model):
     id = Column(Integer, primary_key=True)
@@ -128,10 +157,19 @@ class SourceFiles(Model, AuditMixin):
     def __repr__(self):
         return self.file_source
     
+'''
+class BlackList(Model):
+    id = Column(Integer, primary_key=True)
+    doc_reference = Column(String(50))
+    client_reference = Column(String(50))
+    title = Column(String(255))
+    source_id = Column(Integer, ForeignKey('sourcetype.id'), nullable=False) 
+    source_type = relationship(Sourcetype)
+    
+    def __repr__(self):
+        return self.client_reference
 
-
-
-
+'''
 
 
 

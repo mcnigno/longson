@@ -324,7 +324,6 @@ for cat, value in cat_index.items():
                 # Set Data Label
                 
                 
-                
                 tmp_row = start_row + 1
 
                 for label in fake_label:    

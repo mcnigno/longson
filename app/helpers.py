@@ -2,6 +2,9 @@ from .models import Janus, Doc_list, Pdb, Category, SourceFiles, Sourcetype, Msc
 from app import db
 from datetime import datetime
 import openpyxl
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Font, Border, PatternFill, Color, Side, Alignment, NamedStyle
+from collections import OrderedDict
 from flask import flash
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from config import UPLOAD_FOLDER
@@ -369,48 +372,279 @@ def init_file_type():
 
     return
 
-###
+### MDI Style Helpers
+def style_range(ws, cell_range, border=Border(), fill=None, font=None, alignment=None, first_cell=None):
+    """
+    Apply styles to a range of cells as if they were a single cell.
+    :param ws:  Excel worksheet instance
+    :param range: An excel range to style (e.g. A1:F20)
+    :param border: An openpyxl Border
+    :param fill: An openpyxl PatternFill or GradientFill
+    :param font: An openpyxl Font object
+    """
+
+    top = Border(top=border.top)
+    left = Border(left=border.left)
+    right = Border(right=border.right)
+    bottom = Border(bottom=border.bottom)
+
+    first_cell = first_cell
+    if alignment:
+        
+        ws.merge_cells(cell_range)
+        first_cell.alignment = alignment
+
+    rows = ws[cell_range]
+    if font:
+        first_cell.font = font
+
+    for cell in rows[0]:
+        cell.border = cell.border + top
+    for cell in rows[-1]:
+        cell.border = cell.border + bottom
+
+    for row in rows:
+        l = row[0]
+        r = row[-1]
+        l.border = l.border + left
+        r.border = r.border + right
+        if fill:
+            for c in row:
+                c.fill = fill
+
 ### MDI Main Document Index to Excel
 def mdi_excel():
     session = db.session
-    
+    # Open the MDI Template
+    MDI_template = open('xls/template/MDR_Template.xlsx', mode='rb')
+    wmb = load_workbook(MDI_template, guess_types=True, data_only=True)
+    ws = wmb.active
+
     # For every Category on each document
     categorie_list = session.query(Category).filter(Category.code != None, Category.information != None).all()
     mscodes_list = session.query(Mscode).order_by(Mscode.position).all()
-    #print(mscodes_list)
+    
+    # Start Row for MDI - Skip Header
+    start_row = 11
+    end_row = 19
+
+    fake_label = ['Purpose**','Rev.','Issue Plan','Revised Plan','Issue Actual', 'Transmittal no.', 'Return Date', 'Owner Cmmt*']
+
     for category in categorie_list:
         cat_code = 'Category Code: ' + category.code + ' ' + category.information
-        document_list = session.query(Doc_list).filter(Doc_list.cat == category.code).all()
         
+        # Category Section
+        _ = ws.cell(row=start_row, column=1, value=cat_code)
+        ws.merge_cells(start_row=start_row, end_row=start_row, start_column=1, end_column=5)
+        _.font = Font(b=True)
+        _.fill = PatternFill("solid", fgColor="DDDDDD")
+        _class = ws.cell(row=start_row, column=6)
 
+        thin = Side(border_style="thin", color="000000")
+        double = Side(border_style="double", color="ff0000")
+        single = Side(border_style="medium", color="ff0000")
+        border = Border(top=thin, left=thin, right=thin, bottom=thin)
+        fill = PatternFill("solid", fgColor="DDDDDD")
+        font = Font(b=True, color="000000")
+        al = Alignment(horizontal="left", vertical="center")
+        
+        cat_ranges = 'A'+ str(start_row)+':E'+str(start_row)
+        #org_range = 'B'+ str(start_row+1)+':B'+str(start_row+8)
+        style_range(ws, cat_ranges, border=border, fill=fill, font=font, alignment=al,first_cell=ws.cell(start_row,1))
+        _class.fill = fill
+        _class.border = border
+        #org_range = 'B'+ str(start_row+1)+':B'+str(start_row+8)
+        #style_range(ws, org_range, border=border, fill=fill, font=font, alignment=al,first_cell=ws.cell(start_row+1,2))
+        thin = Side(border_style="thin", color="000000")
+        border = Border(top=thin, left=thin, right=thin, bottom=thin)
+        fill = PatternFill("solid", fgColor="DDDDDD")
+        al = Alignment(horizontal="left", vertical="center")
+        v_al = Alignment(horizontal="center", vertical="center")
+        
+        # Style The Category Header
+        x = 7
+        for n in range(13):
+            n = ws.cell(row=start_row, column=x)
+            n.border = border
+            n.fill = fill
+            x += 1
+        
+        #### Document List Section
+
+        document_list = session.query(Doc_list).filter(Doc_list.cat == category.code).all()
         if document_list:      
             #print(cat_code)
-            for document in document_list: 
+            for document in document_list:
+                print('-----------------',document.client_reference, document.org, document.title, category.code)
+                org = ''
+                if document.org:
+                    org =  document.org #value['org']
+                document_no = document.client_reference
+                document_name = document.title
+                print('******************')
+                classification= ''
+                if document.cat_class:
+                    classification = 'Class '+  document.cat_class
+
                 #print(document)
+
+                # Set Document Info
+                
+                ws.cell(row=start_row+1, column=2, value=org)
+                ws.cell(row=start_row+1, column=3, value=document_no)
+                ws.cell(row=start_row+1, column=4, value=document_name)
+                ws.cell(row=start_row+1, column=6, value=classification)
+                
+                #ws.merge_cells(start_column=2, end_column=2, start_row=start_row+1, end_row=start_row+8)
+                #ws.merge_cells(start_column=3, end_column=3, start_row=start_row+1, end_row=start_row+8)
+                #ws.merge_cells(start_column=4, end_column=4, start_row=start_row+1, end_row=start_row+8)
+
+                # Set Data Label
+                
+                
+                tmp_row = start_row + 1
+
+                for label in fake_label:    
+                    _ = ws.cell(row=tmp_row, column=7, value=label)
+                    dotted = Side(border_style="dotted", color="000000")
+                    _.border = Border(bottom=dotted)
+                    if label == "Purpose**":
+                        _.border = Border(top=thin, bottom=dotted)
+                    elif label == 'Owner Cmmt*':
+                        _.border = Border(bottom=thin)
+
+                    
+                    tmp_row += 1
+                
+                
+                #### PDB Section
+                
                 pdb_document_list = session.query(Pdb).filter(Pdb.client_reference_id == document.client_reference).all()
-                #janus_list = session.query(Janus).filter(Janus.client_reference_id == document.client_reference).all()
+                '''
                 mscode_actions = set([x.required_action for x in pdb_document_list])
                 if mscodes_list:
+                    
                     for ms in mscode_actions:
-                        pdb_document = session.query(Pdb).filter(Pdb.client_reference_id == document.client_reference, Pdb.required_action == ms ).first()
-                        #janus_document = session.query(Janus).filter(Janus.client_reference_id == document.client_reference, Janus.mscode == ms.mscode ).first()
-                        
-                        if pdb_document:
-                            print('PDB:',pdb_document.client_reference,pdb_document.required_action)
-                        #if janus_document:
-                        #    print('JANUS:',janus_document.client_reference,janus_document.mscode)
-                ''' 
-                for milestone in set([x.required_action for x in pdb_document_list] + [x.mscode for x in janus_list]):
-                    if milestone == code.mscode:    
-                        print('pdb + janus milestones:', document, milestone)    
-                        if pdb_document_list:
-                            for doc in pdb_document_list:
-                                print(cat_code, document, doc.title)
-                                if janus_list:
-                                    
-                                    for milestone in janus_list[1:]:
-                                        print(milestone.mscode) 
-                '''                        
-    return  
+                '''
+                pdb_document = session.query(Pdb).filter(Pdb.client_reference_id == document.client_reference ).order_by(Pdb.revision_number).all()
+                #janus_document = session.query(Janus).filter(Janus.client_reference_id == document.client_reference, Janus.mscode == ms ).first()
+                
+                # Set Janus Date on the last revision of PDB doc.
+                #if janus_document:
+                    
+                tmp_col = 8
+                tmp_row = start_row + 1
+
+                for doc in pdb_document:
+                    
+                    ws.cell(row=start_row+1, column=3, value=doc.client_reference_id)
+                    ws.cell(row=start_row+1, column=4, value=document.title)
+                    
+                    purpose = ws.cell(row=tmp_row, column=tmp_col, value=doc.required_action)
+                    rev = ws.cell(row=tmp_row+1, column=tmp_col, value=doc.revision_number)
+                    
+                    issue_plan = ''
+                    revised_plan = ''
+                    janus_document = session.query(Janus).filter(Janus.client_reference_id == document.client_reference, Janus.mscode == doc.required_action ).first()
+                    
+                    if janus_document:
+                        issue_plan = janus_document.planned_date
+                        revised_plan = janus_document.revised_plan_date
+                    
+                    issue_plan = ws.cell(row=tmp_row+2, column=tmp_col, value=issue_plan)
+                    revised_plan = ws.cell(row=tmp_row+3, column=tmp_col, value=revised_plan)
+
+                    issue_actual = ws.cell(row=tmp_row+4, column=tmp_col, value=doc.transmittal_date)
+                    trans = ws.cell(row=tmp_row+5, column=tmp_col, value=doc.client_transmittal_ref_number)
+                    return_date = ws.cell(row=tmp_row+6, column=tmp_col, value=doc.actual_response_date)
+                    
+                    #print('conversion to string***********')
+                    if doc.document_status is not None:
+                        owner_cmmt = str(doc.document_status)[:2]
+                        print('owner***********')
+                    else:
+                        print('No Owner ****/////////')
+                    
+                    if owner_cmmt == "Tr": owner_cmmt = ""
+                    
+                    #owner_cmmt = 'xx'
+                    owner_cmmt = ws.cell(row=tmp_row+7, column=tmp_col, value=owner_cmmt)
+
+                    tmp_col += 1
+                    print('/////here')
+                    dotted = Side(border_style="dotted", color="000000")
+                    border = Border(bottom=dotted, right=thin)
+                    
+                    al = Alignment(horizontal='center')
+                    purpose.border = Border(bottom=dotted,right=thin,top=thin)
+                    purpose.alignment = al
+                    rev.border = border
+                    rev.alignment = al
+                    issue_plan.border = border
+                    issue_plan.alignment = al
+                    issue_plan.number_format = 'DD/MM/YYYY'
+                    revised_plan.border = border
+                    revised_plan.alignment = al
+                    revised_plan.number_format = 'DD/MM/YYYY'
+                    issue_actual.border = border
+                    issue_actual.alignment = al
+                    issue_actual.number_format = 'DD/MM/YYYY'
+                    trans.border = border
+                    trans.alignment = al
+                    return_date.border = border
+                    return_date.alignment = al
+                    return_date.number_format = 'DD/MM/YYYY'
+                    owner_cmmt.border = Border(bottom=thin,right=thin)
+                    owner_cmmt.alignment = al
+            
+                thin = Side(border_style="thin", color="000000")
+                border = Border(top=thin, left=thin, right=thin, bottom=thin)
+                fill = PatternFill("solid", fgColor="DDDDDD")
+                al = Alignment(horizontal="left", vertical="center")
+                v_al = Alignment(horizontal="center", vertical="center")
+                
+                item_range = 'A'+ str(tmp_row)+':A'+str(tmp_row+7)
+                org_range = 'B'+ str(tmp_row)+':B'+str(tmp_row+7)
+                doc_no_range = 'C'+ str(tmp_row)+':C'+str(tmp_row+7)
+                doc_name_range = 'D'+ str(tmp_row)+':E'+str(tmp_row+7)
+                doc_class_range = 'F'+ str(tmp_row)+':F'+str(tmp_row+7)
+                
+                '''
+                style_range(ws, item_range, border=border, alignment=al,first_cell=ws.cell(start_row+1,1))
+                style_range(ws, org_range, border=border, alignment=v_al,first_cell=ws.cell(start_row+1,2))
+                style_range(ws, doc_no_range, border=border, alignment=v_al, first_cell=ws.cell(start_row+1,3))
+                style_range(ws, doc_name_range, border=border, alignment=al, first_cell=ws.cell(start_row+1,4))
+                style_range(ws, doc_class_range, border=border, alignment=v_al,first_cell=ws.cell(start_row+1,6))
+                '''
+                
+                #print(tmp_row)
+                
+                start_row += 8
+        
+        start_row += 1
+
+    #print('Janus NOT Found List')
+    #print(janus_not_found)
+    wmb.save('xls/MDI_TEST.xlsx')
+
+
+'''        
+if pdb_document:
+    print('PDB:',pdb_document.client_reference,pdb_document.required_action)
+if janus_document:
+    print('JANUS:',janus_document.client_reference,janus_document.mscode)
+'''
+''' 
+for milestone in set([x.required_action for x in pdb_document_list] + [x.mscode for x in janus_list]):
+    if milestone == code.mscode:    
+        print('pdb + janus milestones:', document, milestone)    
+        if pdb_document_list:
+            for doc in pdb_document_list:
+                print(cat_code, document, doc.title)
+                if janus_list:
+                    
+                    for milestone in janus_list[1:]:
+                        print(milestone.mscode) 
+'''                        
 #mdi_excel() 
 # To Do: Check if PDB has 

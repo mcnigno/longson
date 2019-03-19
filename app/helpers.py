@@ -627,6 +627,68 @@ def mdi_excel():
     #print(janus_not_found)
     wmb.save('xls/MDI_TEST.xlsx')
 
+def pdb_list_upload2(source):
+    session = db.session
+    pdblist = openpyxl.load_workbook(UPLOAD_FOLDER + source)
+    pdblist_ws = pdblist.active
+ 
+    doc_list = [x.client_reference for x in session.query(Doc_list).all()]
+    count_pdb = 0
+               
+    for row in pdblist_ws.iter_rows(min_row=2):
+        
+        pdb = Pdb(
+            doc_reference=row[0].value,
+            title=row[1].value,
+            revision_number=row[2].value,
+            revision_date=date_parse(row[3].value),
+            document_revision_object=row[4].value,
+
+            discipline=row[6].value,
+            transmittal_date=date_parse(row[7].value),
+            transmittal_reference=row[8].value,
+            specific_transmittal_number=row[9].value,
+            required_action=row[10].value,
+            response_due_date=date_parse(row[11].value),
+            actual_response_date=date_parse(row[12].value),
+            document_status=row[13].value,
+            client_transmittal_ref_number=row[14].value,
+            remarks=row[15].value,
+        )
+        pdb.created_by_fk = '1'
+        pdb.client_reference_id = row[5].value
+        print(pdb.client_reference_id)
+
+        
+        # Check if the pdb doc is or not in document list
+        
+        if row[5].value in doc_list:
+            session.add(pdb)
+            count_pdb += 1
+        else:
+            pdb.ex_client_reference = pdb.client_reference_id
+            pdb.note = pdb.client_reference_id + ' | No reference in Document List.'
+            pdb.client_reference_id = None
+            
+            session.add(pdb)
+            pdb_not_in_document_list.append(pdb)
+        
+
+    session.commit()
+    return str(count_pdb) + ' PDB updated!'
+     
+
+
+def pdb_update():
+    session = db.session
+    sf = SourceFiles
+    files = dict([(str(x.source_type), x.file_source) for x in session.query(sf).all()])
+    pdbdel = session.query(Pdb).delete()
+    print('deleted from PDB', pdbdel)
+    pdb = pdb_list_upload2(files['PDB'])
+    print('deleted from PDB', pdbdel)
+    return print(pdb)
+
 
 '''        
 if pdb_document:

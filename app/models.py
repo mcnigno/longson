@@ -119,16 +119,27 @@ class Pdb(Model):
     remarks = Column(String(255))
     note = Column(String(255))
 
+    def __init__(self, **kwargs):
+        super(Pdb, self).__init__(**kwargs)
+        try:
+            rev = int(self.revision_number)
+            self.revision_number = 'Z' + str(rev)
+        except:
+
+            self.revision_number = self.revision_number
+
     def __repr__(self):
         return self.client_reference + ' Rev. ' + self.revision_number
 
+    
 
 class Mscode(Model):
     id = Column(Integer, primary_key=True)
     position = Column(Integer)
     mscode = Column(String(10))
     description = Column(String(255))
-
+    mdi = Column(Boolean)
+    
 
 class Category(Model):
     id = Column(Integer, primary_key=True)
@@ -136,6 +147,7 @@ class Category(Model):
     code = Column(String(255))
     information = Column(String(255))
     description = Column(Text)
+    document_class = Column(String(10))
 
 
 class Sourcetype(Model):

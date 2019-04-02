@@ -10,6 +10,7 @@ from .helpers import (janus_upload, document_list_upload, pdb_list_upload,
                       init_file_type)
 from flask_appbuilder.filemanager import get_file_original_name
 from config import UPLOAD_FOLDER
+from .full_mdi import *
 """
     Create your Views::
 
@@ -55,22 +56,60 @@ class WrongPdbView(ModelView):
 
 class PdbView(ModelView):
     datamodel = SQLAInterface(Pdb)
-    list_columns = ['client_reference', 'doc_reference',
+    list_columns = ['ex_client_reference', 'client_reference', 'doc_reference',
                     'revision_number', 'required_action']
 
-    '''
-    @action("noProgress", "Not in Progress", "All Documents -> Not in Progress List, Really?", "fa-rocket")
-    def noProgress(self, items):
+    edit_columns = ['ex_client_reference', 'client_reference', 'doc_reference',
+                    'revision_number', 'required_action']
+
+    @action("add_mdi", "Add to MDI", "All Documents -> to MDI List, Really?", "fa-rocket")
+    def add_mdi(self, items):
         #session = db.session
+        janus_count = 0
+        pdb_count = 0
+        doc_count = 0
         if isinstance(items, list):
             for item in items:
-                doc = BlackList(
-                    client_reference=item.client_reference,
-                    doc_reference=item.doc_reference,
-                    title=item.title
-                )
-                self.datamodel.add(doc)
+                print(item.client_reference)
+                print(item.ex_client_reference)
+                cat_code = item.ex_client_reference.split('-')[1][1:]
+                print(cat_code)
+                category = db.session.query(Category).filter(Category.code == cat_code).first()
+                if category:    
+                    doc = Doc_list(
+                        cat= cat_code,
+                        title=item.title,
+                        org=item.discipline,
+                        cat_class=category.document_class,
+                        #class_two=row[7].value,
+                        #weight=row[8].value,
+                        doc_reference=item.doc_reference
+                    )
+                    print(item.ex_client_reference)
+                    doc.client_reference = item.ex_client_reference
+                    self.datamodel.add(doc)
+                    doc_count += 1
 
+                    # Update PDB references to new Doc
+                    item.client_reference_id = item.ex_client_reference
+                    item.ex_client_reference = None
+
+                    # Update Janus REferences
+                    janus = db.session.query(Janus).filter(Janus.doc_reference == item.doc_reference).first()
+                    
+                    if janus:
+                        janus.client_reference_id = item.client_reference_id
+                        janus.ex_client_reference = None
+                        janus_count += 1
+                        self.datamodel.edit(janus)
+                    
+                    self.datamodel.edit(item)
+                    
+                    pdb_count += 1
+                else:
+                    flash(str(item.ex_client_reference) + ' Category Code ' + str(cat_code)+ ' Not Found.',category='warning')
+            
+            flash(str(doc_count) + ' Documents ' + str(pdb_count) + ' PDB revisions and ' + str(janus_count) + ' Janus have been updated.', category='info')
             self.update_redirect()
         else:
             doc = BlackList(
@@ -81,7 +120,7 @@ class PdbView(ModelView):
             self.datamodel.add(doc)
 
         return redirect(self.get_redirect())
-    '''
+    
 
 class JanusView(ModelView):
     datamodel = SQLAInterface(Janus)
@@ -94,7 +133,7 @@ class DocumentListView(ModelView):
     add_columns = ['doc_reference', 'client_reference', 'title']
     list_columns = ['doc_reference', 'client_reference', 'title']
     show_columns = ['doc_reference', 'client_reference', 'title',
-                    'cat', 'org', 'weight', 'cat_class', 'class_two']
+                    'cat', 'org', 'weight', 'cat_class', 'class_two','mdi']
     search_columns = ['client_reference','note']
     related_views = [JanusView, PdbView]
     show_template = 'appbuilder/general/model/show_cascade.html'
@@ -115,6 +154,7 @@ class DocumentListView2(ModelView):
 
 class MscodeView(ModelView):
     datamodel = SQLAInterface(Mscode)
+    list_columns = ['position','mscode','description','mdi']
 
 
 class CategoryView(ModelView):

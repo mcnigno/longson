@@ -8,6 +8,7 @@ from collections import OrderedDict
 from flask import flash
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from config import UPLOAD_FOLDER
+from .full_mdi import full_mdi, full_mdi_last_rev
 
 janus_not_in_document_list = []
 pdb_not_in_document_list = []
@@ -88,7 +89,6 @@ def janus_upload(source):
         for row in janus_sheet.iter_rows(min_row=2):
             
             janus = Janus(
-        
                 linenumber=row[0].value,
                 cat=row[1].value,
                 doc_reference=row[2].value,
@@ -108,7 +108,7 @@ def janus_upload(source):
                 revised_plan_date=row[25].value,
                 forecast_date=row[26].value,
                 actual_date=row[27].value,
-                planned_date=row[32].value
+                planned_date=date_parse(row[32].value)
             )  
              
             janus.created_by_fk = '1'
@@ -148,11 +148,15 @@ def janus_update():
     return janus
 
 
-# janus_test()  
+#janus_update()   
+
 def date_parse(date):
     try:
         if isinstance(date, datetime): return date
         if date == '#N/A': return None
+        if date == 'NOT APPLICABLE':
+            print(date) 
+            return None
         if date == '' or date is None: return None
 
         #return datetime.strptime(date, '%d-%b-%y')
@@ -266,6 +270,7 @@ def category_upload(source):
                         code = row[0].value,
                         information = row[1].value,
                         description = row[2].value,
+                        document_class = row[10].value
 
                     )
                     session.add(cat)
@@ -275,7 +280,20 @@ def category_upload(source):
         return str(count_cat) + ' Categories updated!'
     except:
         return 'Categories FAIL: check your source file.'
+
+def category_update():
+    session = db.session
+    sf = SourceFiles
+    files = dict([(str(x.source_type), x.file_source) for x in session.query(sf).all()])
+    categorydel = session.query(Category).delete()
+    print('deleted from Category', categorydel)
     
+    category = category_upload(files['Categories'])
+    print(category)
+
+    return category
+
+#category_update()
 def mscode_upload(source):
     wcm = openpyxl.load_workbook(UPLOAD_FOLDER + source, data_only=True) 
     wcm = wcm.active
@@ -471,7 +489,8 @@ def mdi_excel():
         
         #### Document List Section
 
-        document_list = session.query(Doc_list).filter(Doc_list.cat == category.code).all()
+        document_list = session.query(Doc_list).filter(Doc_list.cat == category.code, Doc_list.mdi == True).all()
+        #document_list = full_mdi(category.code)
         if document_list:      
             #print(cat_code)
             for document in document_list:
@@ -481,7 +500,7 @@ def mdi_excel():
                     org =  document.org #value['org']
                 document_no = document.client_reference
                 document_name = document.title
-                print('******************')
+                
                 classification= ''
                 if document.cat_class:
                     classification = 'Class '+  document.cat_class
@@ -519,7 +538,7 @@ def mdi_excel():
                 
                 #### PDB Section
                 
-                pdb_document_list = session.query(Pdb).filter(Pdb.client_reference_id == document.client_reference).all()
+                #pdb_document_list = session.query(Pdb).filter(Pdb.client_reference_id == document.client_reference).all()
                 '''
                 mscode_actions = set([x.required_action for x in pdb_document_list])
                 if mscodes_list:
@@ -540,7 +559,7 @@ def mdi_excel():
                     ws.cell(row=start_row+1, column=3, value=doc.client_reference_id)
                     ws.cell(row=start_row+1, column=4, value=document.title)
                     
-                    purpose = ws.cell(row=tmp_row, column=tmp_col, value=doc.required_action)
+                    purpose = ws.cell(row=tmp_row, column=tmp_col, value=doc.document_revision_object)
                     rev = ws.cell(row=tmp_row+1, column=tmp_col, value=doc.revision_number)
                     
                     issue_plan = ''
@@ -627,6 +646,231 @@ def mdi_excel():
     #print(janus_not_found)
     wmb.save('xls/MDI_TEST.xlsx')
 
+#mdi_excel()
+
+def mdi_FULL_excel():
+    ''' Include all Janus Milestone '''
+    session = db.session
+    # Open the MDI Template
+    MDI_template = open('xls/template/MDR_Template.xlsx', mode='rb')
+    wmb = load_workbook(MDI_template, guess_types=True, data_only=True)
+    ws = wmb.active
+
+    # For every Category on each document
+    categorie_list = session.query(Category).filter(Category.code != None, Category.information != None).all()
+    mscodes_list = session.query(Mscode).order_by(Mscode.position).all()
+    
+    # Start Row for MDI - Skip Header
+    start_row = 11
+    end_row = 19
+
+    fake_label = ['Purpose**','Rev.','Issue Plan','Revised Plan','Issue Actual', 'Transmittal no.', 'Return Date', 'Owner Cmmt*']
+
+    for category in categorie_list:
+        cat_code = 'Category Code: ' + category.code + ' ' + category.information
+        print(category.code)
+        # Category Section
+        _ = ws.cell(row=start_row, column=1, value=cat_code)
+        ws.merge_cells(start_row=start_row, end_row=start_row, start_column=1, end_column=5)
+        _.font = Font(b=True)
+        _.fill = PatternFill("solid", fgColor="DDDDDD")
+        _class = ws.cell(row=start_row, column=6)
+
+        thin = Side(border_style="thin", color="000000")
+        double = Side(border_style="double", color="ff0000")
+        single = Side(border_style="medium", color="ff0000")
+        border = Border(top=thin, left=thin, right=thin, bottom=thin)
+        fill = PatternFill("solid", fgColor="DDDDDD")
+        font = Font(b=True, color="000000")
+        al = Alignment(horizontal="left", vertical="center")
+        
+        cat_ranges = 'A'+ str(start_row)+':E'+str(start_row)
+        #org_range = 'B'+ str(start_row+1)+':B'+str(start_row+8)
+        style_range(ws, cat_ranges, border=border, fill=fill, font=font, alignment=al,first_cell=ws.cell(start_row,1))
+        _class.fill = fill
+        _class.border = border
+        #org_range = 'B'+ str(start_row+1)+':B'+str(start_row+8)
+        #style_range(ws, org_range, border=border, fill=fill, font=font, alignment=al,first_cell=ws.cell(start_row+1,2))
+        thin = Side(border_style="thin", color="000000")
+        border = Border(top=thin, left=thin, right=thin, bottom=thin)
+        fill = PatternFill("solid", fgColor="DDDDDD")
+        al = Alignment(horizontal="left", vertical="center")
+        v_al = Alignment(horizontal="center", vertical="center")
+        
+        # Style The Category Header
+        x = 7
+        for n in range(13):
+            n = ws.cell(row=start_row, column=x)
+            n.border = border
+            n.fill = fill
+            x += 1
+        
+        #### Document List Section
+
+        document_list = session.query(Doc_list).filter(Doc_list.cat == category.code).all()
+        
+        if document_list:      
+            print('document list len:', len(document_list))
+            for document in document_list:
+                print('-----------------',document.client_reference, document.org, document.title, category.code)
+                org = ''
+                if document.org:
+                    org =  document.org #value['org']
+                document_no = document.client_reference
+                document_name = document.title
+                
+                classification= ''
+                if document.cat_class:
+                    classification = 'Class '+  document.cat_class
+
+                print(document)
+
+                # Set Document Info
+                
+                ws.cell(row=start_row+1, column=2, value=org)
+                ws.cell(row=start_row+1, column=3, value=document_no)
+                ws.cell(row=start_row+1, column=4, value=document_name)
+                ws.cell(row=start_row+1, column=6, value=classification)
+                
+                #ws.merge_cells(start_column=2, end_column=2, start_row=start_row+1, end_row=start_row+8)
+                #ws.merge_cells(start_column=3, end_column=3, start_row=start_row+1, end_row=start_row+8)
+                #ws.merge_cells(start_column=4, end_column=4, start_row=start_row+1, end_row=start_row+8)
+
+                # Set Data Label
+                
+                
+                tmp_row = start_row + 1
+
+                for label in fake_label:    
+                    _ = ws.cell(row=tmp_row, column=7, value=label)
+                    dotted = Side(border_style="dotted", color="000000")
+                    _.border = Border(bottom=dotted)
+                    if label == "Purpose**":
+                        _.border = Border(top=thin, bottom=dotted)
+                    elif label == 'Owner Cmmt*':
+                        _.border = Border(bottom=thin)
+
+                    
+                    tmp_row += 1
+                
+                
+                #### PDB Section
+                
+                #pdb_document_list = session.query(Pdb).filter(Pdb.client_reference_id == document.client_reference).all()
+                
+                #pdb_document = session.query(Pdb).filter(Pdb.client_reference_id == document.client_reference ).order_by(Pdb.revision_number).all()
+                janus_document = session.query(Janus).filter(Janus.client_reference_id == document.client_reference).all()
+                ### Order PDB revision by letters then number | fake solution... Z0, Z1 etc..
+                
+                # Set Janus Date on the last revision of PDB doc.
+                #if janus_document:
+                print('Before full mdi call -------******')
+                pdb_document = full_mdi(document.client_reference) 
+                print('After full mdi call -------******') 
+                tmp_col = 8
+                tmp_row = start_row + 1
+                 
+                if pdb_document: 
+                    for x, doc in pdb_document:
+                        if doc is not None:
+                            print('Doc in Pdb', doc.client_reference_id)
+                            
+                            ws.cell(row=start_row+1, column=3, value=doc.client_reference_id)
+                            ws.cell(row=start_row+1, column=4, value=document.title)
+                            
+                            purpose = ws.cell(row=tmp_row, column=tmp_col, value=doc.document_revision_object)
+                            # Clean the numeric revisions before write 
+                            if doc.revision_number and doc.revision_number[0] == 'Z':
+                                doc.revision_number = doc.revision_number[1:]
+                            rev = ws.cell(row=tmp_row+1, column=tmp_col, value=doc.revision_number)
+                            
+                            issue_plan = ''
+                            revised_plan = ''
+                            
+                            if doc.note == 'last':
+                                janus_document = session.query(Janus).filter(Janus.client_reference_id == document.client_reference, Janus.mscode == doc.document_revision_object ).first()
+                            
+                                if janus_document:
+                                    issue_plan = janus_document.planned_date
+                                    revised_plan = janus_document.revised_plan_date
+                            
+                            issue_plan = ws.cell(row=tmp_row+2, column=tmp_col, value=issue_plan)
+                            revised_plan = ws.cell(row=tmp_row+3, column=tmp_col, value=revised_plan)
+
+                            issue_actual = ws.cell(row=tmp_row+4, column=tmp_col, value=doc.transmittal_date)
+                            trans = ws.cell(row=tmp_row+5, column=tmp_col, value=doc.client_transmittal_ref_number)
+                            return_date = ws.cell(row=tmp_row+6, column=tmp_col, value=doc.actual_response_date)
+                            
+                            # Owner Cmmt field
+                            owner_cmmt = ''
+                            if doc.document_status is not None:
+                                owner_cmmt = str(doc.document_status)[:2]
+                            if owner_cmmt == "Tr": owner_cmmt = ""
+                            owner_cmmt = ws.cell(row=tmp_row+7, column=tmp_col, value=owner_cmmt)
+
+                            
+                            tmp_col += 1
+                            
+                            dotted = Side(border_style="dotted", color="000000")
+                            border = Border(bottom=dotted, right=thin)
+                            
+                            al = Alignment(horizontal='center')
+                            purpose.border = Border(bottom=dotted,right=thin,top=thin)
+                            purpose.alignment = al
+                            rev.border = border
+                            rev.alignment = al
+                            issue_plan.border = border
+                            issue_plan.alignment = al
+                            issue_plan.number_format = 'DD/MM/YYYY'
+                            revised_plan.border = border
+                            revised_plan.alignment = al
+                            revised_plan.number_format = 'DD/MM/YYYY'
+                            issue_actual.border = border
+                            issue_actual.alignment = al
+                            issue_actual.number_format = 'DD/MM/YYYY'
+                            trans.border = border
+                            trans.alignment = al
+                            return_date.border = border
+                            return_date.alignment = al
+                            return_date.number_format = 'DD/MM/YYYY'
+                            owner_cmmt.border = Border(bottom=thin,right=thin)
+                            owner_cmmt.alignment = al
+                    
+                    thin = Side(border_style="thin", color="000000")
+                    border = Border(top=thin, left=thin, right=thin, bottom=thin)
+                    fill = PatternFill("solid", fgColor="DDDDDD")
+                    al = Alignment(horizontal="left", vertical="center")
+                    v_al = Alignment(horizontal="center", vertical="center")
+                    
+                    item_range = 'A'+ str(tmp_row)+':A'+str(tmp_row+7)
+                    org_range = 'B'+ str(tmp_row)+':B'+str(tmp_row+7)
+                    doc_no_range = 'C'+ str(tmp_row)+':C'+str(tmp_row+7)
+                    doc_name_range = 'D'+ str(tmp_row)+':E'+str(tmp_row+7)
+                    doc_class_range = 'F'+ str(tmp_row)+':F'+str(tmp_row+7)
+                    
+                    '''
+                    style_range(ws, item_range, border=border, alignment=al,first_cell=ws.cell(start_row+1,1))
+                    style_range(ws, org_range, border=border, alignment=v_al,first_cell=ws.cell(start_row+1,2))
+                    style_range(ws, doc_no_range, border=border, alignment=v_al, first_cell=ws.cell(start_row+1,3))
+                    style_range(ws, doc_name_range, border=border, alignment=al, first_cell=ws.cell(start_row+1,4))
+                    style_range(ws, doc_class_range, border=border, alignment=v_al,first_cell=ws.cell(start_row+1,6))
+                    '''
+                    
+                    #print(tmp_row)
+                    
+                    start_row += 8
+            
+        start_row += 1
+
+    #print('Janus NOT Found List')
+    #print(janus_not_found)
+    wmb.save('xls/MDI_TEST.xlsx')
+#
+#
+#
+#
+#mdi_FULL_excel()
+
 def pdb_list_upload2(source):
     session = db.session
     pdblist = openpyxl.load_workbook(UPLOAD_FOLDER + source)
@@ -676,7 +920,6 @@ def pdb_list_upload2(source):
 
     session.commit()
     return str(count_pdb) + ' PDB updated!'
-     
 
 
 def pdb_update():
@@ -689,7 +932,7 @@ def pdb_update():
     print('deleted from PDB', pdbdel)
     return print(pdb)
 
-
+#pdb_update()  
 '''        
 if pdb_document:
     print('PDB:',pdb_document.client_reference,pdb_document.required_action)

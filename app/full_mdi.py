@@ -74,10 +74,15 @@ def full_mdi_last_rev(client_reference):
     ### Aggiungi la posizione alla lista ordinata
     mscode_dict = dict([(x.mscode, str(x.position).zfill(2)) for x in mscode_list])
     mscode_actual = set([x.document_revision_object for x in pdb_document]+[x.mscode for x in janus_document])
+    
+    mscode_actual2 = set([x.document_revision_object for x in pdb_document])
+
     ordered_list = []
     pdb_revision_object_list = set()
+    
     relations = {
-        'IFD': ['IFD1','IFD2']
+        'IFD': ['IFD1','IFD2'],
+        'IFA': ['IFR']
     }
 
     for code in mscode_actual:

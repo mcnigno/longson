@@ -80,7 +80,7 @@ def janus_upload_from_txt(source):
 
 def janus_upload(source):
     session = db.session
-    janus_file = openpyxl.load_workbook(UPLOAD_FOLDER + source, data_only=True, guess_types=True)
+    janus_file = openpyxl.load_workbook(UPLOAD_FOLDER + source, data_only=True)
     janus_sheet = janus_file.active
     #row_number = 0
     count_janus = 0
@@ -653,7 +653,9 @@ def mdi_FULL_excel():
     session = db.session
     # Open the MDI Template
     MDI_template = open('xls/template/MDR_Template.xlsx', mode='rb')
-    wmb = load_workbook(MDI_template, guess_types=True, data_only=True)
+    ## Guess Type dropped in new openpyxl version
+    #wmb = load_workbook(MDI_template, guess_types=True, data_only=True)
+    wmb = load_workbook(MDI_template, data_only=True)
     ws = wmb.active
 
     # For every Category on each document
@@ -716,8 +718,8 @@ def mdi_FULL_excel():
                 org = ''
                 if document.org:
                     org =  document.org #value['org']
-                document_no = document.client_reference
-                document_name = document.title
+                    document_no = document.client_reference
+                    document_name = document.title
                 
                 classification= ''
                 if document.cat_class:

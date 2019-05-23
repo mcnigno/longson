@@ -62,40 +62,6 @@ class Doc_list(Model):
     '''
 
 
-class Janus(Model):
-    id = Column(Integer, primary_key=True)
-    linenumber = Column(String(4))
-    cat = Column(String(4))
-
-    client_reference_id = Column(String(50), ForeignKey('doc_list.client_reference'))
-    client_reference = relationship(Doc_list)#, backref='janus', lazy='selectin')
-    ex_client_reference = Column(String(50))
-
-    doc_reference = Column(String(50))
-    weight = Column(Integer)
-    title = Column(String(255))
-    milestone_chain = Column(String(50))
-    dbs = Column(String(50))
-    wbs = Column(String(50))
-    fcr_one = Column(String(50))
-    fcr_two = Column(String(50))
-    fcr_three = Column(String(50))
-    fcr_four = Column(String(50))
-    mscode = Column(String(50))
-    cumulative = Column(String(50))
-    obs = Column(String(50))
-
-    initial_plan_date = Column(Date)
-    revised_plan_date = Column(Date)
-    forecast_date = Column(Date)
-    actual_date = Column(Date)
-    planned_date = Column(Date)
-
-    note = Column(String(255))
-
-    def __repr__(self):
-        return str(self.client_reference) + self.mscode
-
 
 class Pdb(Model):
     id = Column(Integer, primary_key=True)
@@ -129,9 +95,49 @@ class Pdb(Model):
             self.revision_number = self.revision_number
 
     def __repr__(self):
-        return self.client_reference + ' Rev. ' + self.revision_number
+        return str(self.client_reference) + ' Rev. ' + self.revision_number
 
-    
+
+class Janus(Model):
+    id = Column(Integer, primary_key=True)
+    linenumber = Column(String(4))
+    cat = Column(String(4))
+
+    client_reference_id = Column(String(50), ForeignKey('doc_list.client_reference'))
+    client_reference = relationship(Doc_list)#, backref='janus', lazy='selectin')
+    ex_client_reference = Column(String(50))
+
+    doc_reference = Column(String(50))
+    weight = Column(Integer)
+    title = Column(String(255))
+    milestone_chain = Column(String(50))
+    dbs = Column(String(50))
+    wbs = Column(String(50))
+    fcr_one = Column(String(50))
+    fcr_two = Column(String(50))
+    fcr_three = Column(String(50))
+    fcr_four = Column(String(50))
+    mscode = Column(String(50))
+    cumulative = Column(String(50))
+    obs = Column(String(50))
+
+    initial_plan_date = Column(Date)
+    revised_plan_date = Column(Date)
+    forecast_date = Column(Date)
+    actual_date = Column(Date)
+    planned_date = Column(Date)
+
+    note = Column(String(255))
+
+    pdb_issue = Column(String(10))
+
+    pdb_id = Column(Integer, ForeignKey('pdb.id'))
+    pdb = relationship(Pdb)
+
+    def __repr__(self):
+        return str(self.client_reference) + self.mscode
+
+ 
 
 class Mscode(Model):
     id = Column(Integer, primary_key=True)
@@ -139,6 +145,18 @@ class Mscode(Model):
     mscode = Column(String(10))
     description = Column(String(255))
     mdi = Column(Boolean)
+    
+
+class Janusms(Model):
+    id = Column(Integer, primary_key=True)
+    position = Column(Integer)
+    mscode = Column(String(10))
+    description = Column(String(255))
+    mdi = Column(Boolean)
+
+    mscode_id = Column(Integer, ForeignKey('mscode.id'))
+    mscode = relationship(Mscode, backref='JanusMS')
+
     
 
 class Category(Model):

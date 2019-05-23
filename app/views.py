@@ -3,7 +3,7 @@ from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_appbuilder import ModelView, BaseView, expose, has_access, action
 from app import appbuilder, db
 from flask_appbuilder.models.sqla.filters import FilterEqual, FilterNotContains, FilterGreater
-from .models import Doc_list, Janus, Pdb, Mscode, Category, SourceFiles, Sourcetype
+from .models import Doc_list, Janus, Pdb, Mscode, Category, SourceFiles, Sourcetype, Janusms
 
 from .helpers import (janus_upload, document_list_upload, pdb_list_upload,
                       category_upload, update_all, check_pdb_not_in_janus,
@@ -57,10 +57,10 @@ class WrongPdbView(ModelView):
 class PdbView(ModelView):
     datamodel = SQLAInterface(Pdb)
     list_columns = ['ex_client_reference', 'client_reference', 'doc_reference',
-                    'revision_number', 'required_action']
+                    'revision_number', 'document_revision_object']
 
     edit_columns = ['ex_client_reference', 'client_reference', 'doc_reference',
-                    'revision_number', 'required_action']
+                    'revision_number', 'document_revision_object']
 
     @action("add_mdi", "Add to MDI", "All Documents -> to MDI List, Really?", "fa-rocket")
     def add_mdi(self, items):
@@ -124,7 +124,7 @@ class PdbView(ModelView):
 
 class JanusView(ModelView):
     datamodel = SQLAInterface(Janus)
-    list_columns = ['mscode', 'initial_plan_date',
+    list_columns = ['mscode','pdb_issue',  'initial_plan_date',
                     'revised_plan_date', 'forecast_date', 'actual_date','planned_date']
 
 
@@ -152,9 +152,15 @@ class DocumentListView2(ModelView):
     datamodel = SQLAInterface(Doc_list)
 
 
+class JanusmsView(ModelView):
+    datamodel = SQLAInterface(Janusms)
+
+
 class MscodeView(ModelView):
     datamodel = SQLAInterface(Mscode)
     list_columns = ['position','mscode','description','mdi']
+    add_columns = ['position','mscode','description','mdi', 'JanusMS']
+    related_views = [JanusmsView]
 
 
 class CategoryView(ModelView):
@@ -236,9 +242,16 @@ appbuilder.add_view(SourceFileTypeView, "File Type", icon="fa-folder-open-o",
                     category="Setting", category_icon='fa-envelope')
 appbuilder.add_view(MscodeView, "Milestones", icon="fa-folder-open-o",
                     category="Setting", category_icon='fa-envelope')
+appbuilder.add_view(JanusmsView, "Janus MS", icon="fa-folder-open-o",
+                    category="Setting", category_icon='fa-envelope')
+
 appbuilder.add_view(CategoryView, "Category", icon="fa-folder-open-o",
                     category="Setting", category_icon='fa-envelope')
+
+
 appbuilder.add_separator(category='Setting')
+
+
 appbuilder.add_view(Setting_updateView, "Setting Update",
                     icon="fa-folder-open-o", category="Setting", category_icon='fa-envelope')
 

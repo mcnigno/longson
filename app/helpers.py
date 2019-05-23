@@ -80,56 +80,74 @@ def janus_upload_from_txt(source):
 
 def janus_upload(source):
     session = db.session
-    janus_file = openpyxl.load_workbook(UPLOAD_FOLDER + source, data_only=True, guess_types=True)
+    janus_file = openpyxl.load_workbook(UPLOAD_FOLDER + source, data_only=True)
     janus_sheet = janus_file.active
     #row_number = 0
     count_janus = 0
     doc_list = [x.client_reference for x in session.query(Doc_list).all()]
+    print('Doc list Ready')
     try:
         for row in janus_sheet.iter_rows(min_row=2):
-            
-            janus = Janus(
-                linenumber=row[0].value,
-                cat=row[1].value,
-                doc_reference=row[2].value,
-                weight=row[9].value,
-                title=row[11].value,
-                milestone_chain=row[12].value,
-                dbs=row[13].value,
-                wbs=row[14].value,
-                fcr_one=row[15].value,
-                fcr_two=row[16].value,
-                fcr_three=row[17].value,
-                fcr_four=row[18].value,
-                mscode=row[19].value,
-                cumulative=row[20].value,
-                obs=row[23].value,
-                initial_plan_date=row[24].value, 
-                revised_plan_date=row[25].value,
-                forecast_date=row[26].value,
-                actual_date=row[27].value,
-                planned_date=date_parse(row[32].value)
-            )  
-             
-            janus.created_by_fk = '1'
-            
-            janus.client_reference_id = row[8].value
-            
-            
-            # Check if the janus doc is or not in document list 
-            
-            if row[8].value in doc_list:
+            print('janus___rowww            ****************',
+                    row[8].value,
+                    row[0].value,
+                    row[1].value,
+                    row[2].value,
+                    )
+            if row[8].value != 'NOT APPLICABLE':
+                print('BEFORE PLANNED DATE')
+                print(type(row[32].value), row[32].value == '#N/A')
+                planned_date = row[32].value
+                if row[32].value == '#N/A':
+                    print('setting planning date')
+                    planned_date = ''
+                    #planned_date = date_parse(row[32].value)
+                print('AFTER PLANNED DATE', planned_date)
                 
-                session.add(janus)
-                count_janus += 1
-            else:
                 
-                janus.ex_client_reference = row[8].value
-                janus.note = str(janus.client_reference_id) + ' | No reference in Document List.'
-                janus.client_reference_id = None
+                janus = Janus(
+                    linenumber=row[0].value,
+                    cat=row[1].value,
+                    doc_reference=row[2].value,
+                    weight=row[9].value,
+                    title=row[11].value,
+                    milestone_chain=row[12].value,
+                    dbs=row[13].value,
+                    wbs=row[14].value,
+                    fcr_one=row[15].value,
+                    fcr_two=row[16].value,
+                    fcr_three=row[17].value,
+                    fcr_four=row[18].value,
+                    mscode=row[19].value,
+                    cumulative=row[20].value,
+                    obs=row[23].value,
+                    initial_plan_date=row[24].value, 
+                    revised_plan_date=row[25].value,
+                    forecast_date=row[26].value,
+                    actual_date=row[27].value,
+                    planned_date=planned_date,
+                    pdb_issue=row[33].value
+                )  
+                print('janus___rowww    NOT APPLICABLE        ****************')
+                janus.created_by_fk = '1'
                 
-                session.add(janus)
-                #janus_not_in_document_list.append(janus)
+                janus.client_reference_id = row[8].value
+                
+                
+                # Check if the janus doc is or not in document list 
+                
+                if row[8].value in doc_list:
+                    
+                    session.add(janus)
+                    count_janus += 1
+                else:
+                    
+                    janus.ex_client_reference = row[8].value
+                    janus.note = str(janus.client_reference_id) + ' | No reference in Document List.'
+                    janus.client_reference_id = None
+                    
+                    session.add(janus)
+                    #janus_not_in_document_list.append(janus)
 
         session.commit()
         return str(count_janus) + ' Janus Updated'
@@ -152,8 +170,10 @@ def janus_update():
 
 def date_parse(date):
     try:
+        print('Date is Type:', type(date), date)
+        if isinstance(date, str): return None
         if isinstance(date, datetime): return date
-        if date == '#N/A': return None
+        if str(date) == '#N/A' or str(date) == '#N/D': return None
         if date == 'NOT APPLICABLE':
             print(date) 
             return None
@@ -161,6 +181,7 @@ def date_parse(date):
 
         #return datetime.strptime(date, '%d-%b-%y')
     except:
+        print('something Wrong with DATE PARSE')
         return None
 
 
@@ -205,52 +226,69 @@ def pdb_list_upload(source):
     pdblist_ws = pdblist.active
  
     doc_list = [x.client_reference for x in session.query(Doc_list).all()]
+    
     count_pdb = 0
     try:           
         for row in pdblist_ws.iter_rows(min_row=2):
-            
-            pdb = Pdb(
-                doc_reference=row[0].value,
-                title=row[1].value,
-                revision_number=row[2].value,
-                revision_date=date_parse(row[3].value),
-                document_revision_object=row[4].value,
-
-                discipline=row[6].value,
-                transmittal_date=date_parse(row[7].value),
-                transmittal_reference=row[8].value,
-                specific_transmittal_number=row[9].value,
-                required_action=row[10].value,
-                response_due_date=date_parse(row[11].value),
-                actual_response_date=date_parse(row[12].value),
-                document_status=row[13].value,
-                client_transmittal_ref_number=row[14].value,
-                remarks=row[15].value,
-            )
-            pdb.created_by_fk = '1'
-            pdb.client_reference_id = row[5].value
-            
-
-            
-            # Check if the pdb doc is or not in document list
-            
-            if row[5].value in doc_list:
-                session.add(pdb)
-                count_pdb += 1
-            else:
-                pdb.ex_client_reference = pdb.client_reference_id
-                pdb.note = pdb.client_reference_id + ' | No reference in Document List.'
-                pdb.client_reference_id = None
+             if row[5].value is not None:
+                print('        ----------------- HERE --------------',row[0].value,row[5].value)
                 
-                session.add(pdb)
-                pdb_not_in_document_list.append(pdb)
-            
+                pdb = Pdb(
+                    doc_reference=row[0].value,
+                    title=row[1].value,
+                    revision_number=row[2].value,
+                    revision_date=date_parse(row[3].value),
+                    document_revision_object=row[4].value,
+
+                    discipline=row[6].value,
+                    transmittal_date=date_parse(row[7].value),
+                    transmittal_reference=row[8].value,
+                    specific_transmittal_number=row[9].value,
+                    required_action=row[10].value,
+                    response_due_date=date_parse(row[11].value),
+                    actual_response_date=date_parse(row[12].value),
+                    document_status=row[13].value,
+                    client_transmittal_ref_number=row[14].value,
+                    remarks=row[15].value,
+                )
+                pdb.created_by_fk = '1'
+                pdb.client_reference_id = row[5].value
+                
+
+                
+                # Check if the pdb doc is or not in document list
+                
+                if row[5].value in doc_list:
+                    session.add(pdb)
+                    count_pdb += 1
+                else:
+                    pdb.ex_client_reference = pdb.client_reference_id
+                    pdb.note = pdb.client_reference_id + ' | No reference in Document List.'
+                    pdb.client_reference_id = None
+                    
+                    session.add(pdb)
+                    pdb_not_in_document_list.append(pdb)
+                
 
         session.commit()
         return str(count_pdb) + ' PDB updated!'
     except:
         return 'PDB FAIL: check your source file.'  
 
+
+def pdb_update():
+    session = db.session
+    sf = SourceFiles
+    files = dict([(str(x.source_type), x.file_source) for x in session.query(sf).all()])
+    pdbdel = session.query(Pdb).delete()
+    print('deleted from PDB', pdbdel)
+    
+    pdb = pdb_list_upload(files['PDB'])
+    print(pdb)
+
+    return pdb
+
+#pdb_update()
 # Open the Category Code List 
 def category_upload(source):
     wcb = openpyxl.load_workbook(UPLOAD_FOLDER + source)
@@ -332,7 +370,7 @@ def mscode_update():
 
     return mscode
 
-#mscode_update()
+#mscode_update() 
 
 def update_all():
     init_file_type()
@@ -653,7 +691,7 @@ def mdi_FULL_excel():
     session = db.session
     # Open the MDI Template
     MDI_template = open('xls/template/MDR_Template.xlsx', mode='rb')
-    wmb = load_workbook(MDI_template, guess_types=True, data_only=True)
+    wmb = load_workbook(MDI_template, data_only=True)
     ws = wmb.active
 
     # For every Category on each document
@@ -786,13 +824,21 @@ def mdi_FULL_excel():
                             
                             issue_plan = ''
                             revised_plan = ''
+                            print('HEEEERE')
+                            janus_document = session.query(Janus).filter(
+                                                            Janus.client_reference_id == document.client_reference, 
+                                                            Janus.pdb_issue == doc.document_revision_object, 
+                                                            Janus.pdb_id == None
+                                                            ).first()
                             
-                            if doc.note == 'last':
-                                janus_document = session.query(Janus).filter(Janus.client_reference_id == document.client_reference, Janus.mscode == doc.document_revision_object ).first()
+                            if janus_document:
+                                #janus_document.pdb_id = pdb_document.id
+                                issue_plan = janus_document.planned_date
+                                #revised_plan = janus_document.revised_plan_date
+                                pdb_doc = session.query(Pdb).filter(Pdb.client_reference_id == document.client_reference).first()
+                                print('NOT HEEEERE')
                             
-                                if janus_document:
-                                    issue_plan = janus_document.planned_date
-                                    revised_plan = janus_document.revised_plan_date
+                                janus_document.pdb_id = pdb_doc.id
                             
                             issue_plan = ws.cell(row=tmp_row+2, column=tmp_col, value=issue_plan)
                             revised_plan = ws.cell(row=tmp_row+3, column=tmp_col, value=revised_plan)
@@ -889,7 +935,7 @@ def pdb_list_upload2(source):
             document_revision_object=row[4].value,
 
             discipline=row[6].value,
-            transmittal_date=date_parse(row[7].value),
+            transmittal_date=date_parse(row[16].value),
             transmittal_reference=row[8].value,
             specific_transmittal_number=row[9].value,
             required_action=row[10].value,
@@ -900,7 +946,11 @@ def pdb_list_upload2(source):
             remarks=row[15].value,
         )
         pdb.created_by_fk = '1'
-        pdb.client_reference_id = row[5].value
+        if row[5].value:
+            pdb.client_reference_id = row[5].value
+        else:
+            pdb.client_reference_id = 'NO-CLIENT-REFERENCES'
+        
         print(pdb.client_reference_id)
 
         
@@ -929,7 +979,7 @@ def pdb_update():
     pdbdel = session.query(Pdb).delete()
     print('deleted from PDB', pdbdel)
     pdb = pdb_list_upload2(files['PDB'])
-    print('deleted from PDB', pdbdel)
+    
     return print(pdb)
 
 #pdb_update()  

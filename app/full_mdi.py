@@ -7,15 +7,16 @@ def full_mdi(client_reference):
     session = db.session
 
     document = session.query(Doc_list).filter(Doc_list.client_reference == client_reference).first()
-
+    print('Before PDB Query')
     pdb_document = session.query(Pdb).filter(Pdb.client_reference_id == client_reference ).order_by(Pdb.revision_number).all()
+    
     janus_document = session.query(Janus).filter(Janus.client_reference_id == client_reference).all()
     mscode_list = session.query(Mscode).order_by(Mscode.position).all()
     ### Order PDB revision by letters then number | fake solution... Z0, Z1 etc..
     ### Crea un dict con la posizione per ogni mscode
     ### Aggiungi la posizione alla lista ordinata
     mscode_dict = dict([(x.mscode, x.position) for x in mscode_list])
-
+    
     #print(mscode_dict)
     ordered_list = []
     pdb_revision_object_list = set()  
@@ -44,20 +45,34 @@ def full_mdi(client_reference):
     
     for j in janus_document:
         if j.mscode != 'START' \
-        and j.mscode not in pdb_revision_object_list:
-        #and doc.client_reference_id:
+            and j.pdb_issue != 'NOT APPLIC' \
+            and j.pdb_issue not in pdb_revision_object_list \
+            and client_reference \
+            and j.pdb_issue in mscode_list:
+            #and doc.client_reference_id:
             #print('client reference',doc.client_reference_id)
             #print('vvvvvvvv')
             fake_doc = Pdb(client_reference_id=client_reference)
-            fake_doc.document_revision_object = j.mscode
+            fake_doc.document_revision_object = j.pdb_issue
     
-            
+            print('Before ORDER ---------',j.pdb_issue)
+            print(mscode_dict)
+            print(ordered_list)
             ordered_list.append((
-                str(mscode_dict[j.mscode]) +
-                j.mscode,
+                str(mscode_dict[j.pdb_issue]) +
+                j.pdb_issue,
                 fake_doc))
             #print(j.mscode)
-    
+            print('After ORDER ---------',fake_doc.client_reference_id,
+                            fake_doc.document_revision_object,
+                            j.pdb_issue,
+                            type(j.pdb_issue)
+                            )
+            print(ordered_list)
+            ''' 
+            for x,doc in sorted(ordered_list):
+                print(x)
+            '''
     return sorted(ordered_list) 
 
 #full_mdi() 

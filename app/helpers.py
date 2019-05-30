@@ -749,6 +749,8 @@ def mdi_FULL_excel():
         
         if document_list:      
             print('document list len:', len(document_list))
+            
+            
             for document in document_list:
                 print('-----------------',document.client_reference, document.org, document.title, category.code)
                 org = ''
@@ -824,7 +826,7 @@ def mdi_FULL_excel():
                             
                             issue_plan = ''
                             revised_plan = ''
-                            print('HEEEERE')
+                            print('HEEEERE', document.client_reference, doc.document_revision_object)
                             janus_document = session.query(Janus).filter(
                                                             Janus.client_reference_id == document.client_reference, 
                                                             Janus.pdb_issue == doc.document_revision_object, 
@@ -837,8 +839,8 @@ def mdi_FULL_excel():
                                 #revised_plan = janus_document.revised_plan_date
                                 pdb_doc = session.query(Pdb).filter(Pdb.client_reference_id == document.client_reference).first()
                                 print('NOT HEEEERE')
-                            
-                                janus_document.pdb_id = pdb_doc.id
+                                if pdb_doc:
+                                    janus_document.pdb_id = pdb_doc.id
                             
                             issue_plan = ws.cell(row=tmp_row+2, column=tmp_col, value=issue_plan)
                             revised_plan = ws.cell(row=tmp_row+3, column=tmp_col, value=revised_plan)
@@ -911,11 +913,12 @@ def mdi_FULL_excel():
     #print('Janus NOT Found List')
     #print(janus_not_found)
     wmb.save('xls/MDI_TEST.xlsx')
+    print('document list len:', len(document_list))
 #
 #
 #
 #
-#mdi_FULL_excel()
+#mdi_FULL_excel() 
 
 def pdb_list_upload2(source):
     session = db.session
@@ -982,7 +985,7 @@ def pdb_update():
     
     return print(pdb)
 
-#pdb_update()  
+#pdb_update()     
 '''        
 if pdb_document:
     print('PDB:',pdb_document.client_reference,pdb_document.required_action)

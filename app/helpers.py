@@ -8,7 +8,7 @@ from collections import OrderedDict
 from flask import flash
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from config import UPLOAD_FOLDER
-from .full_mdi import full_mdi, full_mdi_last_rev
+from .full_mdi import full_mdi, full_mdi_last_rev, fulmdi2
 
 janus_not_in_document_list = []
 pdb_not_in_document_list = []
@@ -748,11 +748,11 @@ def mdi_FULL_excel():
         document_list = session.query(Doc_list).filter(Doc_list.cat == category.code).all()
         
         if document_list:      
-            print('document list len:', len(document_list))
+            #print('document list len:', len(document_list))
             
             
             for document in document_list:
-                print('-----------------',document.client_reference, document.org, document.title, category.code)
+                #print('-----------------',document.client_reference, document.org, document.title, category.code)
                 org = ''
                 if document.org:
                     org =  document.org #value['org']
@@ -763,7 +763,7 @@ def mdi_FULL_excel():
                 if document.cat_class:
                     classification = 'Class '+  document.cat_class
 
-                print(document)
+                #print(document)
 
                 # Set Document Info
                 
@@ -804,16 +804,16 @@ def mdi_FULL_excel():
                 
                 # Set Janus Date on the last revision of PDB doc.
                 #if janus_document:
-                print('Before full mdi call -------******')
-                pdb_document = full_mdi(document.client_reference) 
-                print('After full mdi call -------******') 
+                #print('Before full mdi call -------******')
+                pdb_document = fulmdi2(document.client_reference) 
+                #print('After full mdi call -------******') 
                 tmp_col = 8
                 tmp_row = start_row + 1
                  
                 if pdb_document: 
                     for x, doc in pdb_document:
                         if doc is not None:
-                            print('Doc in Pdb', doc.client_reference_id)
+                            #print('Doc in Pdb', doc.client_reference_id)
                             
                             ws.cell(row=start_row+1, column=3, value=doc.client_reference_id)
                             ws.cell(row=start_row+1, column=4, value=document.title)
@@ -826,7 +826,7 @@ def mdi_FULL_excel():
                             
                             issue_plan = ''
                             revised_plan = ''
-                            print('HEEEERE', document.client_reference, doc.document_revision_object)
+                            #print('HEEEERE', document.client_reference, doc.document_revision_object)
                             janus_document = session.query(Janus).filter(
                                                             Janus.client_reference_id == document.client_reference, 
                                                             Janus.pdb_issue == doc.document_revision_object, 
@@ -838,7 +838,7 @@ def mdi_FULL_excel():
                                 issue_plan = janus_document.planned_date
                                 #revised_plan = janus_document.revised_plan_date
                                 pdb_doc = session.query(Pdb).filter(Pdb.client_reference_id == document.client_reference).first()
-                                print('NOT HEEEERE')
+                                #print('NOT HEEEERE')
                                 if pdb_doc:
                                     janus_document.pdb_id = pdb_doc.id
                             
@@ -913,12 +913,12 @@ def mdi_FULL_excel():
     #print('Janus NOT Found List')
     #print(janus_not_found)
     wmb.save('xls/MDI_TEST.xlsx')
-    print('document list len:', len(document_list))
+    #print('document list len:', len(document_list))
 #
 #
 #
 #
-#mdi_FULL_excel() 
+#mdi_FULL_excel()  
 
 def pdb_list_upload2(source):
     session = db.session

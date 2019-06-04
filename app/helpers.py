@@ -94,13 +94,13 @@ def janus_upload(source):
                     row[1].value,
                     row[2].value,
                     )
-            if row[8].value != 'NOT APPLICABLE':
+            if row[33].value != 'NOT APPLICABLE':
                 print('BEFORE PLANNED DATE')
                 print(type(row[32].value), row[32].value == '#N/A')
                 planned_date = row[32].value
                 if row[32].value == '#N/A':
                     print('setting planning date')
-                    planned_date = ''
+                    planned_date = None
                     #planned_date = date_parse(row[32].value)
                 print('AFTER PLANNED DATE', planned_date)
                 
@@ -122,16 +122,17 @@ def janus_upload(source):
                     cumulative=row[20].value,
                     obs=row[23].value,
                     initial_plan_date=row[24].value, 
-                    revised_plan_date=row[25].value,
+                    
                     forecast_date=row[26].value,
                     actual_date=row[27].value,
                     planned_date=planned_date,
-                    pdb_issue=row[33].value
+                    pdb_issue=row[33].value,
+                    revised_plan_date=row[34].value
                 )  
                 print('janus___rowww    NOT APPLICABLE        ****************')
                 janus.created_by_fk = '1'
                 
-                janus.client_reference_id = row[8].value
+                janus.client_reference_id = row[8].value 
                 
                 
                 # Check if the janus doc is or not in document list 
@@ -836,7 +837,7 @@ def mdi_FULL_excel():
                             if janus_document:
                                 #janus_document.pdb_id = pdb_document.id
                                 issue_plan = janus_document.planned_date
-                                #revised_plan = janus_document.revised_plan_date
+                                revised_plan = janus_document.revised_plan_date
                                 pdb_doc = session.query(Pdb).filter(Pdb.client_reference_id == document.client_reference).first()
                                 #print('NOT HEEEERE')
                                 if pdb_doc:

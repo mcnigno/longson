@@ -178,7 +178,7 @@ def full_mdi_last_rev(client_reference):
 
 
 
-def fulmdi2(client_reference='OL1-2M03-2049'):
+def fulmdi2(client_reference):
 
     session = db.session
     document = session.query(Doc_list).filter(Doc_list.client_reference == client_reference).first()
@@ -226,3 +226,84 @@ def fulmdi2(client_reference='OL1-2M03-2049'):
     #return ordered_list.sort(key=operator.itemgetter(1))
 
 #fulmdi2()
+
+def fulmdi3(client_reference='OL1-2K92-0005'):
+
+    session = db.session
+    document = session.query(Doc_list).filter(Doc_list.client_reference == client_reference).first()
+    
+    janus_document = session.query(Janus).filter(Janus.client_reference_id == client_reference).all()
+    
+    ordered_list = []
+    issue_list = set()
+    hash_issue = {
+        'IFA':['IFA','IFR','IFI'],
+        'IBD': ['IBD','IFD'],
+        'IDD': ['IDD', 'IDD1', 'IDD2'],
+        'IFD': ['IFD','IFQ'],
+        'IFF': ['IFF','IMP','IFP'],
+        'IFI': ['IFI','IFR','IFA'],
+        'IFP': ['IFP','IMP','IFF'],
+        'IFR': ['IFR','IFA','IFI'],
+    }
+    if janus_document:
+        for j in janus_document:
+            if j.pdb_issue !='NOT APPLIC':
+                
+                if j.pdb_issue in hash_issue:
+                    pdb_found = False
+                    for issue in hash_issue[j.pdb_issue]:
+                        pdb_document = session.query(Pdb).filter(
+                            Pdb.client_reference_id == client_reference,
+                            Pdb.document_revision_object == issue 
+                            ).order_by(Pdb.transmittal_date).all()
+                        if pdb_document:
+                            pdb_found = True
+                            if issue != j.pdb_issue:
+                                fake_doc = Pdb(client_reference_id=client_reference)
+                                fake_doc.document_revision_object = j.pdb_issue
+                                date = j.planned_date
+                                ordered_list.append((date, fake_doc))
+                            for doc in pdb_document:
+                                if doc.transmittal_date == None: date = doc.actual_response_date 
+                                else: date = doc.transmittal_date
+                                ordered_list.append((date, doc))
+                            #issue_list.add(issue)
+                            break
+                    if pdb_found == False:
+                        fake_doc = Pdb(client_reference_id=client_reference)
+                        fake_doc.document_revision_object = j.pdb_issue
+                        date = j.planned_date
+                        ordered_list.append((date, fake_doc))
+                    
+                        
+                else:
+                    pdb_document = session.query(Pdb).filter(
+                            Pdb.client_reference_id == client_reference,
+                            Pdb.document_revision_object == j.pdb_issue 
+                            ).order_by(Pdb.transmittal_date).all()
+                    if pdb_document:
+                        for doc in pdb_document:
+                            if doc.transmittal_date == None: date = doc.actual_response_date 
+                            else: date = doc.transmittal_date
+                            ordered_list.append((date, doc))
+                    
+                    else:
+                        fake_doc = Pdb(client_reference_id=client_reference)
+                        fake_doc.document_revision_object = j.pdb_issue
+                        date = j.planned_date
+                        ordered_list.append((date, fake_doc))
+                    
+    else:
+        pdb_document = session.query(Pdb).filter(
+                            Pdb.client_reference_id == client_reference
+                            ).order_by(Pdb.transmittal_date).all()
+        if pdb_document:
+            for doc in pdb_document:
+                if doc.transmittal_date == None: date = doc.actual_response_date 
+                else: date = doc.transmittal_date
+                ordered_list.append((date, doc))           
+           
+    return ordered_list
+
+#fulmdi3()

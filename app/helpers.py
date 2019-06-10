@@ -8,7 +8,7 @@ from collections import OrderedDict
 from flask import flash
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from config import UPLOAD_FOLDER
-from .full_mdi import full_mdi, full_mdi_last_rev, fulmdi2
+from .full_mdi import full_mdi, full_mdi_last_rev, fulmdi2, fulmdi3
 
 janus_not_in_document_list = []
 pdb_not_in_document_list = []
@@ -686,7 +686,7 @@ def mdi_excel():
     wmb.save('xls/MDI_TEST.xlsx')
 
 #mdi_excel()
-
+ 
 def mdi_FULL_excel():
     ''' Include all Janus Milestone '''
     session = db.session
@@ -696,7 +696,10 @@ def mdi_FULL_excel():
     ws = wmb.active
 
     # For every Category on each document
-    categorie_list = session.query(Category).filter(Category.code != None, Category.information != None).all()
+    categorie_list = session.query(Category).filter(
+        Category.code != None, 
+        Category.information != None,
+        ).order_by(Category.code).all()
     mscodes_list = session.query(Mscode).order_by(Mscode.position).all()
     
     # Start Row for MDI - Skip Header
@@ -806,7 +809,7 @@ def mdi_FULL_excel():
                 # Set Janus Date on the last revision of PDB doc.
                 #if janus_document:
                 #print('Before full mdi call -------******')
-                pdb_document = fulmdi2(document.client_reference) 
+                pdb_document = fulmdi3(document.client_reference) 
                 #print('After full mdi call -------******') 
                 tmp_col = 8
                 tmp_row = start_row + 1
@@ -814,6 +817,8 @@ def mdi_FULL_excel():
                 if pdb_document: 
                     for x, doc in pdb_document:
                         if doc is not None:
+                            if doc.client_reference_id == 'OL1-2E92-0001':
+                                print('OL1-2E92-0001')
                             #print('Doc in Pdb', doc.client_reference_id)
                             
                             ws.cell(row=start_row+1, column=3, value=doc.client_reference_id)
@@ -831,7 +836,7 @@ def mdi_FULL_excel():
                             janus_document = session.query(Janus).filter(
                                                             Janus.client_reference_id == document.client_reference, 
                                                             Janus.pdb_issue == doc.document_revision_object, 
-                                                            Janus.pdb_id == None
+                                                            #Janus.pdb_id == None
                                                             ).first()
                             
                             if janus_document:
@@ -919,7 +924,7 @@ def mdi_FULL_excel():
 #
 #
 #
-#mdi_FULL_excel()  
+mdi_FULL_excel()
 
 def pdb_list_upload2(source):
     session = db.session

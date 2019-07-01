@@ -817,6 +817,8 @@ def mdi_FULL_excel():
                  
                 if pdb_document: 
                     for x, doc in pdb_document:
+                        # Issue and Revised Date only on the first janus match
+                        first_match = True
                         if doc is not None:
                             if doc.client_reference_id == 'OL1-2E92-0001':
                                 print('OL1-2E92-0001')
@@ -840,12 +842,13 @@ def mdi_FULL_excel():
                                                             #Janus.pdb_id == None
                                                             ).first()
                             
-                            if janus_document:
+                            if janus_document and first_match:
                                 #janus_document.pdb_id = pdb_document.id
                                 issue_plan = janus_document.planned_date
                                 revised_plan = janus_document.revised_plan_date
                                 pdb_doc = session.query(Pdb).filter(Pdb.client_reference_id == document.client_reference).first()
                                 #print('NOT HEEEERE')
+                                first_match = False
                                 if pdb_doc:
                                     janus_document.pdb_id = pdb_doc.id
                             

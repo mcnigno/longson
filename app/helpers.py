@@ -13,7 +13,6 @@ from .full_mdi import full_mdi, full_mdi_last_rev, fulmdi2, fulmdi3
 janus_not_in_document_list = []
 pdb_not_in_document_list = []
 
-
 def janus_upload_from_txt(source):
     session = db.session
     janus_file = open(UPLOAD_FOLDER + source)
@@ -84,7 +83,8 @@ def janus_upload(source):
     janus_sheet = janus_file.active
     #row_number = 0
     count_janus = 0
-    doc_list = [x.client_reference for x in session.query(Doc_list).all()]
+    doclist_query = session.query(Doc_list).all()
+    doc_list = [x.client_reference for x in doclist_query]
     print('Doc list Ready')
     try:
         for row in janus_sheet.iter_rows(min_row=2):
@@ -94,11 +94,11 @@ def janus_upload(source):
                     row[1].value,
                     row[2].value,
                     )
-            if row[33].value != 'NOT APPLICABLE':
+            if row[32].value != 'NOT APPLICABLE':
                 print('BEFORE PLANNED DATE')
-                print(type(row[32].value), row[32].value == '#N/A')
-                planned_date = row[32].value
-                if row[32].value == '#N/A':
+                print(type(row[31].value), row[31].value == '#N/A')
+                planned_date = row[31].value
+                if row[31].value == '#N/A':
                     print('setting planning date')
                     planned_date = None
                     #planned_date = date_parse(row[32].value)
@@ -107,8 +107,8 @@ def janus_upload(source):
                 
                 janus = Janus(
                     linenumber=row[0].value,
-                    cat=row[1].value,
-                    doc_reference=row[2].value,
+                    cat=row[2].value,
+                    doc_reference=row[1].value,
                     weight=row[9].value,
                     title=row[11].value,
                     milestone_chain=row[12].value,
@@ -126,8 +126,8 @@ def janus_upload(source):
                     forecast_date=row[26].value,
                     actual_date=row[27].value,
                     planned_date=planned_date,
-                    pdb_issue=row[33].value,
-                    revised_plan_date=row[34].value
+                    pdb_issue=row[32].value,
+                    revised_plan_date=row[33].value
                 )  
                 print('janus___rowww    NOT APPLICABLE        ****************')
                 janus.created_by_fk = '1'
@@ -168,6 +168,7 @@ def janus_update():
 
 
 #janus_update()   
+
 
 def date_parse(date):
     try:
@@ -686,7 +687,7 @@ def mdi_excel():
     wmb.save('xls/MDI_TEST.xlsx')
 
 #mdi_excel()
- 
+
 def mdi_FULL_excel():
     ''' Include all Janus Milestone '''
     session = db.session
@@ -924,7 +925,7 @@ def mdi_FULL_excel():
 #
 #
 #
-mdi_FULL_excel()
+#mdi_FULL_excel()
 
 def pdb_list_upload2(source):
     session = db.session
@@ -990,6 +991,7 @@ def pdb_update():
     pdb = pdb_list_upload2(files['PDB'])
     
     return print(pdb)
+
 
 #pdb_update()     
 '''        

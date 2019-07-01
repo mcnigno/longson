@@ -816,9 +816,11 @@ def mdi_FULL_excel():
                 tmp_row = start_row + 1
                  
                 if pdb_document: 
+                    first_match = True
+                    issue_type_for = ''
                     for x, doc in pdb_document:
                         # Issue and Revised Date only on the first janus match
-                        first_match = True
+                        
                         if doc is not None:
                             if doc.client_reference_id == 'OL1-2E92-0001':
                                 print('OL1-2E92-0001')
@@ -841,7 +843,9 @@ def mdi_FULL_excel():
                                                             Janus.pdb_issue == doc.document_revision_object, 
                                                             #Janus.pdb_id == None
                                                             ).first()
-                            
+                            if doc.document_revision_object != issue_type_for:
+                                issue_type_for = doc.document_revision_object
+                                first_match = True
                             if janus_document and first_match:
                                 #janus_document.pdb_id = pdb_document.id
                                 issue_plan = janus_document.planned_date
@@ -851,7 +855,10 @@ def mdi_FULL_excel():
                                 first_match = False
                                 if pdb_doc:
                                     janus_document.pdb_id = pdb_doc.id
-                            
+                            # If Issue Actual is there take it instead the revised plan
+                            if doc.transmittal_date:
+                                revised_plan = doc.transmittal_date
+
                             issue_plan = ws.cell(row=tmp_row+2, column=tmp_col, value=issue_plan)
                             revised_plan = ws.cell(row=tmp_row+3, column=tmp_col, value=revised_plan)
 

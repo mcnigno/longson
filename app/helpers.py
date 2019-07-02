@@ -856,7 +856,7 @@ def mdi_FULL_excel():
                                 if pdb_doc:
                                     janus_document.pdb_id = pdb_doc.id
                             # If Issue Actual is there take it instead the revised plan
-                            if doc.transmittal_date:
+                            if doc.transmittal_date and first_match:
                                 revised_plan = doc.transmittal_date
 
                             issue_plan = ws.cell(row=tmp_row+2, column=tmp_col, value=issue_plan)

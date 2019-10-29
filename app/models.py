@@ -186,7 +186,23 @@ class SourceFiles(Model, AuditMixin):
 
     def __repr__(self):
         return self.file_source
+
+from flask import url_for, Markup
+class Mdi(Model,AuditMixin):
+    id = Column(Integer, primary_key=True)
+    file = Column(FileColumn())
+    name = Column(String(50),nullable=False)
+    description = Column(Text)
+    def __repr__(self):
+        return self.name
     
+    def download(self):
+        return Markup(
+            '<a href="'
+            + url_for("MdiView.download", filename=str(self.file))
+            + '">Download</a>'
+        )
+
 '''
 class BlackList(Model):
     id = Column(Integer, primary_key=True)

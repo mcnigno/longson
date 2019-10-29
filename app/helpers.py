@@ -10,6 +10,10 @@ from flask_appbuilder.models.sqla.interface import SQLAInterface
 from config import UPLOAD_FOLDER
 from .full_mdi import full_mdi, full_mdi_last_rev, fulmdi2, fulmdi3
 
+from app import rq
+
+from datetime import timedelta
+
 janus_not_in_document_list = []
 pdb_not_in_document_list = []
 
@@ -76,15 +80,19 @@ def janus_upload_from_txt(source):
     except:
         return 'Janus FAIL: check your source file'
 
-
 def janus_upload(source):
     session = db.session
     janus_file = openpyxl.load_workbook(UPLOAD_FOLDER + source, data_only=True)
     janus_sheet = janus_file.active
     #row_number = 0
     count_janus = 0
+    # Set the document list with all janus document
+    #documents = janus_update_document_list(source)
+    
+    print('******    ******   Document list updated')
     doclist_query = session.query(Doc_list).all()
     doc_list = [x.client_reference for x in doclist_query]
+    
     print('Doc list Ready')
     try:
         for row in janus_sheet.iter_rows(min_row=2):
@@ -155,7 +163,48 @@ def janus_upload(source):
     except:
         return 'Janus FAIL: check your source file'
 
+def janus_update_document_list(source):
+    
+    session = db.session
+    janus_file = openpyxl.load_workbook(UPLOAD_FOLDER + source, data_only=True)
+    janus_sheet = janus_file.active
+    #row_number = 0
+    count_janus = 0
+    doclist_query = session.query(Doc_list).all()
+    doc_list = [x.client_reference for x in doclist_query]
+    print('Doc list Ready')
+    
+    for row in janus_sheet.iter_rows(min_row=2):
+        print('new document from janus___rowww            ****************',
+                row[8].value,
+                row[0].value,
+                row[1].value,
+                row[2].value,
+                )
+        if row[8].value not in doc_list and row[32].value != 'NOT APPLICABLE':
+            
+            document = Doc_list(
+                
+                doc_reference=row[1].value,
+                weight=row[9].value,
+                title=row[11].value,
+                client_reference=row[8].value,
+                cat=row[13].value[6:8],
+                
+                org=row[36].value
+            )  
+            
+            document.created_by_fk = '1'
+            
+            session.add(document)
+            print('Document created',document.client_reference )
+            
+                
 
+    session.commit()
+    return 'done'
+
+@rq.job('low', timeout=15)        
 def janus_update():
     session = db.session
     sf = SourceFiles
@@ -163,12 +212,55 @@ def janus_update():
     janusdel = session.query(Janus).delete()
     print('deleted from JANUS', janusdel)
     janus = janus_upload(files['Janus'])
-
+    
     return janus
 
-
-#janus_update()   
-
+#janus_update()    
+# 
+def doclist_update_from_janus():
+    session = db.session
+    sf = SourceFiles
+    files = dict([(str(x.source_type), x.file_source) for x in session.query(sf).all()])
+    
+    source = files['Janus']
+    janus_file = openpyxl.load_workbook(UPLOAD_FOLDER + source, data_only=True)
+    janus_sheet = janus_file.active
+    
+    
+    print('Doc list Ready')
+    
+    for row in janus_sheet.iter_rows(min_row=2):
+        doclist_query = session.query(Doc_list).filter(
+            Doc_list.client_reference==row[8].value).first()
+        
+        print('new document from janus___rowww            ****************',
+                row[8].value,
+                row[0].value,
+                row[1].value,
+                row[2].value,
+                )
+        if doclist_query is None and row[32].value != 'NOT APPLICABLE':
+            print('CREATING A NEW DOCUMENT ** *** *** *** ***')
+            
+            document = Doc_list(
+                
+                doc_reference=row[1].value,
+                weight=row[9].value,
+                title=row[11].value,
+                client_reference=row[8].value,
+                cat=row[13].value[6:8],
+                
+                org=row[36].value
+            )  
+            
+            
+            
+            session.add(document)
+            print('Document created',document.client_reference )
+            
+        session.commit()
+     
+#doclist_update_from_janus()
 
 def date_parse(date):
     try:
@@ -186,7 +278,6 @@ def date_parse(date):
         print('something Wrong with DATE PARSE')
         return None
 
-
 def document_list_upload(source):
     print('document_list_upload***')
     session = db.session
@@ -199,7 +290,11 @@ def document_list_upload(source):
     # empty_client_references = session.query(Doc_list).filter(Doc_list.client_reference == 'EmptyClientReferences').first()            
     try:    
         for row in doclist_ws.iter_rows(min_row=2):
-            if row[2].value:
+            doc = session.query(Doc_list).filter(
+                Doc_list.client_reference == row[2].value
+            ).first()
+
+            if row[2].value and doc is None:
                 doclist_row = Doc_list(
                     cat=row[0].value,
                     title=row[3].value,
@@ -212,6 +307,7 @@ def document_list_upload(source):
                 doclist_row.created_by_fk = '1'
                 doclist_row.client_reference = row[2].value
                 count_doc += 1
+                print('Document',row[2].value)
                 session.add(doclist_row)
             
         print('Document in DC processed', count_doc)
@@ -221,11 +317,21 @@ def document_list_upload(source):
     except:
         return 'Document List FAIL: check your source file.'
 
+@rq.job('low', timeout=15)
+def document_list_update():
+    session = db.session
+    sf = SourceFiles
+    files = dict([(str(x.source_type),x.file_source) for x in session.query(sf).all()])
 
+    doc = document_list_upload(files['Document List'])
+
+#document_list_update()
+ 
 def pdb_list_upload(source):
     session = db.session
     pdblist = openpyxl.load_workbook(UPLOAD_FOLDER + source)
     pdblist_ws = pdblist.active
+    session.query(Pdb).delete()
  
     doc_list = [x.client_reference for x in session.query(Doc_list).all()]
     
@@ -277,8 +383,9 @@ def pdb_list_upload(source):
     except:
         return 'PDB FAIL: check your source file.'  
 
+#pdb_list_upload()
 
-def pdb_update():
+def pdb_replace():
     session = db.session
     sf = SourceFiles
     files = dict([(str(x.source_type), x.file_source) for x in session.query(sf).all()])
@@ -298,29 +405,47 @@ def category_upload(source):
     
     session = db.session
     count_cat = 0
-    try:
-        for name in sheet_list[5:]:
-            wcs = wcb[name]
-            
-            for row in wcs.iter_rows(min_row=9):
-                            
+    
+    for name in sheet_list[6:]:
+        print(' - - - - - - - - Category - - - - ')
+        print(name)
+        wcs = wcb[name]
+        
+        for row in wcs.iter_rows(min_row=9):
+            #print(' - - - - - - - - Row - - - - ',row[1].value,row[12].value[0:1])
+
+            try:            
                 if row[1].value is not None:
+                    doc_class = 'ND'
+                    try:
+                        if row[12].value:
+                            doc_class = str(row[12].value)[0]
+                    except:
+
+                        print('WRONG CLASS',row[0].value,row[1].value,row[12].value)
                     cat = Category(
-                        sheet_name = name,
+                        #sheet_name = name,
                         code = row[0].value,
                         information = row[1].value,
                         description = row[2].value,
-                        document_class = row[10].value
-
+                        document_class = doc_class
                     )
                     session.add(cat)
                     count_cat += 1
-        
-        session.commit()
-        return str(count_cat) + ' Categories updated!'
+                    session.commit()
+            except:
+                print('CATEGORY ERROR CODE:',row[0].value,name)
+            try:
+                session.commit()
+            except:
+                print('sheet name error', name)
+    return str(count_cat) + ' Categories updated!'
+    '''
     except:
         return 'Categories FAIL: check your source file.'
+    '''
 
+@rq.job('low', timeout=15)
 def category_update():
     session = db.session
     sf = SourceFiles
@@ -333,33 +458,36 @@ def category_update():
 
     return category
 
-#category_update()
+#category_update()  
 def mscode_upload(source):
+    print('--- - - - - - - -- - - >>>> MSCODE FUNCTION')
     wcm = openpyxl.load_workbook(UPLOAD_FOLDER + source, data_only=True) 
     wcm = wcm.active
     
     session = db.session
     count_mscodes = 0
-    try:
-        for row in wcm.iter_rows(min_row=2):
-            
-            if row[0].value is not None:
-                
-                mscode = Mscode(
-
-                    mscode=row[0].value,
-                    position=int(row[1].value),
-                    description=row[2].value,
-
-                )
-                session.add(mscode)
-                count_mscodes += 1
     
-        session.commit()
-        return str(count_mscodes) + ' MS Codes updated!'
-    except:
-        return 'MS Codes FAIL: check your source file.'
+    for row in wcm.iter_rows(min_row=2):
+        print('MSCODE FUNCTION, ROW:', row)
+        
+        if row[0].value is not None:
+            
+            mscode = Mscode(
 
+                mscode=row[0].value,
+                position=int(row[1].value),
+                description=row[2].value,
+
+            )
+            session.add(mscode)
+            count_mscodes += 1
+
+    session.commit()
+    return str(count_mscodes) + ' MS Codes updated!'
+    #except:
+        #return 'MS Codes FAIL: check your source file.'
+
+@rq.job('low', timeout=15)
 def mscode_update():
     session = db.session
     sf = SourceFiles
@@ -373,45 +501,6 @@ def mscode_update():
     return mscode
 
 #mscode_update() 
-
-def update_all():
-    init_file_type()
-    session = db.session
-    
-    deleted_pdb = session.query(Pdb).delete()
-    deleted_janus = session.query(Janus).delete()
-    deleted_cat = session.query(Category).delete()
-    deleted_doc = session.query(Doc_list).delete()
-    
-    session.commit()
-
-    sf = SourceFiles
-    files = dict([(str(x.source_type),x.file_source) for x in session.query(sf).all()])
-
-    doc = document_list_upload(files['Document List'])
-    pdb = pdb_list_upload(files['PDB'])
-    janus = janus_upload(files['Janus'])
-    cat = category_upload(files['Categories'])
-    
-
-    
-    return doc, pdb, janus, cat, deleted_doc, deleted_pdb, deleted_janus, deleted_cat
-
-def check_pdb_not_in_janus():
-    print('Check PDB Vs Janus')
-    session = db.session
-    #document_list = session.query(Doc_list).all()
-    janus_list = session.query(Janus).all()
-    pdb_list = session.query(Pdb).all()
-    janus_ref = [x.doc_reference for x in janus_list]
-    pdb_not_in_janus = []
-    for doc in pdb_list:
-        #print(doc.client_reference)
-        if doc.doc_reference not in janus_ref:
-            print('pdb not in janus', doc.client_reference, doc.revision_number, doc.doc_reference)
-            pdb_not_in_janus.append(doc)
-        return pdb_not_in_janus
-
 def init_file_type():
     '''Initialize the DB with all the File Source Type Needed'''
     session = db.session
@@ -429,6 +518,24 @@ def init_file_type():
     
 
     return
+
+#init_file_type()
+
+def check_pdb_not_in_janus():
+    print('Check PDB Vs Janus')
+    session = db.session
+    #document_list = session.query(Doc_list).all()
+    janus_list = session.query(Janus).all()
+    pdb_list = session.query(Pdb).all()
+    janus_ref = [x.doc_reference for x in janus_list]
+    pdb_not_in_janus = []
+    for doc in pdb_list:
+        #print(doc.client_reference)
+        if doc.doc_reference not in janus_ref:
+            print('pdb not in janus', doc.client_reference, doc.revision_number, doc.doc_reference)
+            pdb_not_in_janus.append(doc)
+        return pdb_not_in_janus
+
 
 ### MDI Style Helpers
 def style_range(ws, cell_range, border=Border(), fill=None, font=None, alignment=None, first_cell=None):
@@ -686,8 +793,9 @@ def mdi_excel():
     #print(janus_not_found)
     wmb.save('xls/MDI_TEST.xlsx')
 
-#mdi_excel()
-
+from flask_appbuilder.filemanager import uuid
+#mdi_excel() 
+@rq.job('low', timeout=15)
 def mdi_FULL_excel():
     ''' Include all Janus Milestone '''
     session = db.session
@@ -767,6 +875,7 @@ def mdi_FULL_excel():
                 classification= ''
                 if document.cat_class:
                     classification = 'Class '+  document.cat_class
+                
 
                 #print(document)
 
@@ -822,8 +931,7 @@ def mdi_FULL_excel():
                         # Issue and Revised Date only on the first janus match
                         
                         if doc is not None:
-                            if doc.client_reference_id == 'OL1-2E92-0001':
-                                print('OL1-2E92-0001')
+                            
                             #print('Doc in Pdb', doc.client_reference_id)
                             
                             ws.cell(row=start_row+1, column=3, value=doc.client_reference_id)
@@ -849,7 +957,8 @@ def mdi_FULL_excel():
                             if janus_document and first_match:
                                 #janus_document.pdb_id = pdb_document.id
                                 issue_plan = janus_document.planned_date
-                                revised_plan = janus_document.revised_plan_date
+                                #revised_plan = janus_document.revised_plan_date
+                                revised_plan = doc.transmittal_date
                                 pdb_doc = session.query(Pdb).filter(Pdb.client_reference_id == document.client_reference).first()
                                 #print('NOT HEEEERE')
                                 first_match = False
@@ -858,6 +967,10 @@ def mdi_FULL_excel():
                             # If Issue Actual is there take it instead the revised plan
                             if doc.transmittal_date and first_match:
                                 revised_plan = doc.transmittal_date
+                            
+                            if first_match == False and doc.transmittal_date == False:
+                                revised_plan = janus_document.revised_plan_date or doc.transmittal_date
+
 
                             issue_plan = ws.cell(row=tmp_row+2, column=tmp_col, value=issue_plan)
                             revised_plan = ws.cell(row=tmp_row+3, column=tmp_col, value=revised_plan)
@@ -929,14 +1042,37 @@ def mdi_FULL_excel():
 
     #print('Janus NOT Found List')
     #print(janus_not_found)
-    wmb.save('xls/MDI_TEST.xlsx')
+    file_path = str(uuid.uuid4()) + '__sep__'+ 'MDI_TEST.xlsx' 
+    wmb.save(UPLOAD_FOLDER + file_path)  
+    return file_path
+
+from .models import Mdi 
+from flask_appbuilder.filemanager import uuid_namegen
+
+def new_MDI():
+    session = db.session
+    file_path = mdi_FULL_excel()
+    new_file = file_path
+    #new_file = '50e429ad-f9d2-4e3a-9829-15d51986bed9__sep__MDI_TEST.xlsx'
+    if new_file: 
+        new_mdi = Mdi(
+            name = 'MDI | ' + str(datetime.today()),
+            file = new_file,
+            description = 'LongSon Main Document Index, generated on '+ str(datetime.now()) + ' .',
+            created_by_fk = '1',
+            changed_by_fk = '1'
+        )
+        session.add(new_mdi)
+    session.commit()
+     
+#new_MDI() 
     #print('document list len:', len(document_list))
 #
 #
 #
-#
-#mdi_FULL_excel()
-
+# 
+#mdi_FULL_excel() 
+@rq.job('low', timeout=15)
 def pdb_list_upload2(source):
     session = db.session
     pdblist = openpyxl.load_workbook(UPLOAD_FOLDER + source)
@@ -991,20 +1127,23 @@ def pdb_list_upload2(source):
     session.commit()
     return str(count_pdb) + ' PDB updated!'
 
-
+@rq.job('low', timeout=15)
 def pdb_update():
     session = db.session
     sf = SourceFiles
     files = dict([(str(x.source_type), x.file_source) for x in session.query(sf).all()])
-    pdbdel = session.query(Pdb).delete()
-    print('deleted from PDB', pdbdel)
+    #pdbdel = session.query(Pdb).delete()
+    #print('deleted from PDB', pdbdel)
     pdb = pdb_list_upload2(files['PDB'])
     
     return print(pdb)
 
+#wk = rq.get_worker('PDB UPDATE JOB') 
 
-#pdb_update()     
-'''        
+#pdb_update.queue() 
+#pdb_update.get_worker()
+#pdb_update()        
+'''         
 if pdb_document:
     print('PDB:',pdb_document.client_reference,pdb_document.required_action)
 if janus_document:
@@ -1024,3 +1163,108 @@ for milestone in set([x.required_action for x in pdb_document_list] + [x.mscode 
 '''                        
 #mdi_excel() 
 # To Do: Check if PDB has 
+
+def update_all():
+    init_file_type()
+    session = db.session
+    
+    deleted_pdb = session.query(Pdb).delete()
+    deleted_janus = session.query(Janus).delete()
+    deleted_cat = session.query(Category).delete()
+    deleted_doc = session.query(Doc_list).delete()
+    
+    session.commit()
+
+    sf = SourceFiles
+    files = dict([(str(x.source_type),x.file_source) for x in session.query(sf).all()])
+
+    doc = document_list_upload(files['Document List'])
+    print('doc list done')
+    pdb = pdb_list_upload2(files['PDB'])
+    print('pdb done')
+    janus = janus_upload(files['Janus'])
+    print('janus done')
+    cat = category_upload(files['Categories'])
+    print('cat done')
+    milestons = mscode_update()
+    
+
+    
+    return doc, pdb, janus, cat, deleted_doc, deleted_pdb, deleted_janus, deleted_cat
+
+#update_all() 
+from .models import Category
+
+@rq.job('low', timeout=15)
+def update_doc_class():
+
+    session = db.session
+    doc_list = session.query(Doc_list).all()
+    for document in doc_list:
+        try:
+            cat_class = session.query(Category).filter(
+                Category.code == document.cat
+            ).first()
+            
+            document.cat_class = cat_class.document_class
+            document.changed_by_fk = '1'
+            
+
+        except:
+            print('error', document)
+    session.commit()
+
+#update_doc_class()
+
+
+
+@rq.job('low')
+def add(args):
+    for n in range(1,10):
+        print( '°°°°°°°°°°°°°°°° JOB IN QUEU',args,n)
+    #flash('Job in queue' + str(x+y), category='message')
+    return args
+
+@rq.exception_handler
+def send_alert_to_ops(job, *exc_info):
+    # call other code to send alert to OPs team
+    print('RQ ERROR',job, exc_info)
+
+def test_rq(args):
+    job = add.schedule(timedelta(seconds=5), args)
+    #job2 = pdb_update.schedule(timedelta(seconds=10))
+    queue = rq.get_queue()
+    print('PRINT QUEUE ------------     ---------      ------------    ------ ')
+    print('PRINT QUEUE ------------     ---------      ------------    ------ ')
+    print('PRINT QUEUE ------------     ---------      ------------    ------ ')
+    print('PRINT QUEUE ------------     ---------      ------------    ------ ')
+    print('PRINT QUEUE ------------     ---------      ------------    ------ ')
+    print('PRINT QUEUE ------------     ---------      ------------    ------ ')
+    print('PRINT QUEUE ------------     ---------      ------------    ------ ')
+    #flash('QUEUE MESSAGE',category='info')
+    for jobs in queue.jobs:
+
+        print('jobs',jobs)
+          
+    return queue
+
+
+#test_rq()       
+@rq.job('low')
+def message(text):
+    flash(text,category='info')
+
+def fire_msg(self,text):
+    job3 = message.schedule(timedelta(seconds=15), text)
+
+
+def update_rq(source_type):
+    session = db.session
+    file_func = {
+                'Document List' : document_list_update.schedule(timedelta(seconds=5)),
+                'PDB' : pdb_update.schedule(timedelta(seconds=5) ),
+                'Janus' : janus_update.schedule(timedelta(seconds=5)),
+                'Categories' : category_update.schedule(timedelta(seconds=5))
+                }
+    file_func[str(source_type)]
+

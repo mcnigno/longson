@@ -227,7 +227,7 @@ def fulmdi2(client_reference):
 
 #fulmdi2()
 
-def fulmdi3(client_reference='OL1-2K92-0005'):
+def fulmdi3(client_reference='OL1-2T01-0028'):
 
     session = db.session
     document = session.query(Doc_list).filter(Doc_list.client_reference == client_reference).first()
@@ -236,36 +236,47 @@ def fulmdi3(client_reference='OL1-2K92-0005'):
     
     ordered_list = []
     issue_list = set()
+    error_list_janus_issue = []
+    # aggiungere controllo su mismatch
     hash_issue = {
+
         'IFA':['IFA','IFR','IFI'],
         'IBD': ['IBD','IFD'],
         'IDD': ['IDD', 'IDD1', 'IDD2'],
-        'IFD': ['IFD','IFQ'],
+        'IFD': ['IFD','IFQ','IFP'],
         'IFF': ['IFF','IMP','IFP'],
         'IFI': ['IFI','IFR','IFA'],
         'IFP': ['IFP','IMP','IFF'],
-        'IFR': ['IFR','IFA','IFI'],
+        'IFR': ['IFR','IFA','IFI']
+        
     }
     if janus_document:
         for j in janus_document:
-            if j.pdb_issue !='NOT APPLIC':
+            
+            if j.pdb_issue !='NOT APPLICABLE':
                 
                 if j.pdb_issue in hash_issue:
                     pdb_found = False
-                    for issue in hash_issue[j.pdb_issue]:
+                    issue_list = hash_issue[j.pdb_issue]
+                    issue_already_done = [] 
+                    for issue in issue_list:
                         pdb_document = session.query(Pdb).filter(
                             Pdb.client_reference_id == client_reference,
                             Pdb.document_revision_object == issue 
                             ).order_by(Pdb.transmittal_date).all()
+                        
                         if pdb_document:
                             pdb_found = True
-                            if issue != j.pdb_issue:
+                            if issue != j.pdb_issue and j.pdb_issue not in issue_already_done:
                                 fake_doc = Pdb(client_reference_id=client_reference)
                                 fake_doc.document_revision_object = j.pdb_issue
                                 date = j.planned_date
                                 ordered_list.append((date, fake_doc))
+                                issue_already_done.append(j.pdb_issue)
                             for doc in pdb_document:
-                                if doc.transmittal_date == None: date = doc.actual_response_date 
+                                if doc.transmittal_date is None: 
+                                    doc.transmittal_date = doc.response_due_date
+                                    date = doc.response_due_date 
                                 else: date = doc.transmittal_date
                                 ordered_list.append((date, doc))
                             #issue_list.add(issue)
@@ -278,13 +289,16 @@ def fulmdi3(client_reference='OL1-2K92-0005'):
                     
                         
                 else:
+                    error_list_janus_issue.append(j) 
                     pdb_document = session.query(Pdb).filter(
                             Pdb.client_reference_id == client_reference,
                             Pdb.document_revision_object == j.pdb_issue 
                             ).order_by(Pdb.transmittal_date).all()
                     if pdb_document:
                         for doc in pdb_document:
-                            if doc.transmittal_date == None: date = doc.actual_response_date 
+                            if doc.transmittal_date is None: 
+                                doc.transmittal_date = doc.response_due_date
+                                date = doc.response_due_date 
                             else: date = doc.transmittal_date
                             ordered_list.append((date, doc))
                     
@@ -293,17 +307,41 @@ def fulmdi3(client_reference='OL1-2K92-0005'):
                         fake_doc.document_revision_object = j.pdb_issue
                         date = j.planned_date
                         ordered_list.append((date, fake_doc))
-                    
+                
+                           
     else:
         pdb_document = session.query(Pdb).filter(
                             Pdb.client_reference_id == client_reference
                             ).order_by(Pdb.transmittal_date).all()
         if pdb_document:
             for doc in pdb_document:
-                if doc.transmittal_date == None: date = doc.actual_response_date 
+                if doc.transmittal_date is None: 
+                    doc.transmittal_date = doc.response_due_date
+                    date = doc.response_due_date 
                 else: date = doc.transmittal_date
                 ordered_list.append((date, doc))           
-           
+    
+    #print('-------      --------------      ----------       ------- JANUS ISSUE ERRORS ')
+    #print('-------      --------------      ----------       ------- JANUS ISSUE ERRORS ')
+    #print(error_list_janus_issue)  
     return ordered_list
 
 #fulmdi3()
+
+def check_date():
+    session = db.session
+    pdoc = session.query(Pdb).filter(
+        Pdb.client_reference_id == "OL1-2G02-0001"
+    ).all()
+    for doc in pdoc:
+        try:
+            print('------ ---------- CHECK DATE ---------- -------')
+            print(doc.client_reference_id, doc.transmittal_date)
+            if doc.transmittal_date is None: date = doc.response_due_date 
+            else: date = doc.transmittal_date
+            print('after')
+            print(doc.client_reference_id, doc.transmittal_date)
+        except:
+            print('date is none')
+
+#check_date()  

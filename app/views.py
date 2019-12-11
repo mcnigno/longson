@@ -54,13 +54,14 @@ class WrongPdbView(ModelView):
 
 '''
 from .helpers import test_rq, fire_msg
+
 class PdbView(ModelView):
     datamodel = SQLAInterface(Pdb)
     list_columns = ['ex_client_reference', 'client_reference', 'doc_reference',
                     'revision_number', 'document_revision_object']
-
+ 
     edit_columns = ['ex_client_reference', 'client_reference', 'doc_reference',
-                    'revision_number', 'document_revision_object']
+                    'title','revision_number', 'document_revision_object']
 
     @action("add_mdi", "Add to MDI", "All Documents -> to MDI List, Really?", "fa-rocket")
     def add_mdi(self, items):
@@ -294,12 +295,18 @@ class MdiView(ModelView):
     add_columns = ['name','description']
     
 
+from .helpers import mdi_rq
 class MyView(BaseView):
-    route_base = "/myview"
+    route_base = "/mdi"
+    
+    @expose('/new/')
+    def mdi_new(self):
+        result = mdi_rq()
+        return result
 
     @expose('/method1/<string:param1>')
     def method1(self, param1):
-        # do something with param1
+        # do something with param1 
         # and return it
         return param1
 

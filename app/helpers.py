@@ -12,6 +12,7 @@ from .full_mdi import full_mdi, full_mdi_last_rev, fulmdi2, fulmdi3
 
 from app import rq
 
+
 from datetime import timedelta
 
 janus_not_in_document_list = []
@@ -582,7 +583,7 @@ def mdi_excel():
     session = db.session
     # Open the MDI Template
     MDI_template = open('xls/template/MDR_Template.xlsx', mode='rb')
-    wmb = load_workbook(MDI_template, guess_types=True, data_only=True)
+    wmb = load_workbook(MDI_template, data_only=True)
     ws = wmb.active
 
     # For every Category on each document
@@ -795,7 +796,7 @@ def mdi_excel():
 
 from flask_appbuilder.filemanager import uuid
 #mdi_excel() 
-@rq.job('low', timeout=15)
+#@rq.job('low', timeout=15)
 def mdi_FULL_excel():
     ''' Include all Janus Milestone '''
     session = db.session
@@ -819,7 +820,7 @@ def mdi_FULL_excel():
 
     for category in categorie_list:
         cat_code = 'Category Code: ' + category.code + ' ' + category.information
-        print(category.code)
+        print(category.code, category.information)
         # Category Section
         _ = ws.cell(row=start_row, column=1, value=cat_code)
         ws.merge_cells(start_row=start_row, end_row=start_row, start_column=1, end_column=5)
@@ -928,6 +929,8 @@ def mdi_FULL_excel():
                     first_match = True
                     issue_type_for = ''
                     for x, doc in pdb_document:
+                        if doc.client_reference_id == 'OL1-2C13-251000':
+                            print(doc.client_reference_id)
                         # Issue and Revised Date only on the first janus match
                         
                         if doc is not None:
@@ -951,6 +954,8 @@ def mdi_FULL_excel():
                                                             Janus.pdb_issue == doc.document_revision_object, 
                                                             #Janus.pdb_id == None
                                                             ).first()
+                            if janus_document:
+                                 revised_plan = janus_document.revised_plan_date
                             if doc.document_revision_object != issue_type_for:
                                 issue_type_for = doc.document_revision_object
                                 first_match = True
@@ -961,16 +966,24 @@ def mdi_FULL_excel():
                                 revised_plan = doc.transmittal_date
                                 pdb_doc = session.query(Pdb).filter(Pdb.client_reference_id == document.client_reference).first()
                                 #print('NOT HEEEERE')
-                                first_match = False
+                                
+                                # Moved below
+                                #first_match = False
                                 if pdb_doc:
                                     janus_document.pdb_id = pdb_doc.id
                             # If Issue Actual is there take it instead the revised plan
                             if doc.transmittal_date and first_match:
                                 revised_plan = doc.transmittal_date
                             
-                            if first_match == False and doc.transmittal_date == False:
-                                revised_plan = janus_document.revised_plan_date or doc.transmittal_date
 
+                            if first_match == True and doc.transmittal_date is None:
+                                #revised_plan = janus_document.revised_plan_date or doc.transmittal_date
+                                try:
+                                    revised_plan = janus_document.revised_plan_date
+                                except:
+                                    print('Revised Plan Date in None for', doc.client_reference_id)
+
+                            first_match = False
 
                             issue_plan = ws.cell(row=tmp_row+2, column=tmp_col, value=issue_plan)
                             revised_plan = ws.cell(row=tmp_row+3, column=tmp_col, value=revised_plan)
@@ -1049,29 +1062,50 @@ def mdi_FULL_excel():
 from .models import Mdi 
 from flask_appbuilder.filemanager import uuid_namegen
 
+@rq.job('low', timeout=3600)
 def new_MDI():
+    print(' ------  NEW MDI  ------ ')
     session = db.session
     file_path = mdi_FULL_excel()
-    new_file = file_path
+    #new_file = file_path
     #new_file = '50e429ad-f9d2-4e3a-9829-15d51986bed9__sep__MDI_TEST.xlsx'
-    if new_file: 
+    if file_path: 
         new_mdi = Mdi(
             name = 'MDI | ' + str(datetime.today()),
-            file = new_file,
+            file = file_path,
             description = 'LongSon Main Document Index, generated on '+ str(datetime.now()) + ' .',
             created_by_fk = '1',
             changed_by_fk = '1'
         )
         session.add(new_mdi)
     session.commit()
+    return "MDI is Done."
      
 #new_MDI() 
     #print('document list len:', len(document_list))
+
+from rq_scheduler import Scheduler
+from rq import Queue
+
+def mdi_rq():
+    print(' ------  RQ MDI  ------ ')
+    #new_MDI.schedule(timedelta(seconds=5))
+    q = rq.get_queue(name='low')
+    mdi = q.enqueue_call(new_MDI, timeout=3600)
+    return 'MDI RQ Done'
+    
+    #print(mdi)
+    
+
+    
+    # new_MDI.schedule(timedelta(seconds=5))
 #
 #
+#mdi_rq()  
 #
 # 
 #mdi_FULL_excel() 
+#   
 @rq.job('low', timeout=15)
 def pdb_list_upload2(source):
     session = db.session
@@ -1095,13 +1129,14 @@ def pdb_list_upload2(source):
             transmittal_reference=row[8].value,
             specific_transmittal_number=row[9].value,
             required_action=row[10].value,
-            response_due_date=date_parse(row[11].value),
+            response_due_date=date_parse(row[7].value),#usata per la nuova client trasmittal date
             actual_response_date=date_parse(row[12].value),
             document_status=row[13].value,
             client_transmittal_ref_number=row[14].value,
             remarks=row[15].value,
         )
         pdb.created_by_fk = '1'
+        
         if row[5].value:
             pdb.client_reference_id = row[5].value
         else:
@@ -1120,9 +1155,35 @@ def pdb_list_upload2(source):
             pdb.note = pdb.client_reference_id + ' | No reference in Document List.'
             pdb.client_reference_id = None
             
-            session.add(pdb)
+            
             pdb_not_in_document_list.append(pdb)
+
+            '''
+            pdb_remark = session.query(Pdb).filter(Pdb.client_reference_id == row[18].value).first()
+            if pdb.client_reference_id:
+                pdb_remark.client_reference_id = pdb.client_reference_id
+            else:
+                pdb_remark.client_reference_id = pdb.ex_client_reference
+            
+            '''
+            '''
+            doc_l = session.query(Doc_list).filter(Doc_list.client_reference == pdb.client_reference_id ).first()
+            
+            if doc_l is None:
+                doc_l = Doc_list(
+                    client_reference = pdb.client_reference_id,
+                    doc_reference = pdb.doc_reference,
+                    title = pdb.title
+                )
+                doc_l.created_by_fk = '1'
+            doc_l.client_reference = pdb.client_reference_id
+            doc_l.changed_by_fk = '1'
+            session.add(doc_l)
         
+            print('Problema con questo Remarks', pdb.client_reference_id)
+            '''
+        
+        session.add(pdb)
 
     session.commit()
     return str(count_pdb) + ' PDB updated!'
@@ -1132,17 +1193,19 @@ def pdb_update():
     session = db.session
     sf = SourceFiles
     files = dict([(str(x.source_type), x.file_source) for x in session.query(sf).all()])
-    #pdbdel = session.query(Pdb).delete()
+    pdbdel = session.query(Pdb).delete()
     #print('deleted from PDB', pdbdel)
     pdb = pdb_list_upload2(files['PDB'])
     
     return print(pdb)
 
 #wk = rq.get_worker('PDB UPDATE JOB') 
+  
 
+ 
 #pdb_update.queue() 
 #pdb_update.get_worker()
-#pdb_update()        
+#pdb_update()         
 '''         
 if pdb_document:
     print('PDB:',pdb_document.client_reference,pdb_document.required_action)
@@ -1168,9 +1231,10 @@ def update_all():
     init_file_type()
     session = db.session
     
-    deleted_pdb = session.query(Pdb).delete()
     deleted_janus = session.query(Janus).delete()
-    deleted_cat = session.query(Category).delete()
+    deleted_pdb = session.query(Pdb).delete()
+    
+    #deleted_cat = session.query(Category).delete()
     deleted_doc = session.query(Doc_list).delete()
     
     session.commit()
@@ -1184,13 +1248,15 @@ def update_all():
     print('pdb done')
     janus = janus_upload(files['Janus'])
     print('janus done')
-    cat = category_upload(files['Categories'])
+    #cat = category_upload(files['Categories'])
     print('cat done')
-    milestons = mscode_update()
+    #milestons = mscode_update()
     
 
     
-    return doc, pdb, janus, cat, deleted_doc, deleted_pdb, deleted_janus, deleted_cat
+    #return doc, pdb, janus, cat, deleted_doc, deleted_pdb, deleted_janus, deleted_cat
+    # No Category
+    return doc, pdb, janus, deleted_doc, deleted_pdb, deleted_janus
 
 #update_all() 
 from .models import Category
@@ -1230,10 +1296,16 @@ def send_alert_to_ops(job, *exc_info):
     # call other code to send alert to OPs team
     print('RQ ERROR',job, exc_info)
 
+
+
 def test_rq(args):
-    job = add.schedule(timedelta(seconds=5), args)
+    job = add.schedule(timedelta(seconds=20), args)
     #job2 = pdb_update.schedule(timedelta(seconds=10))
     queue = rq.get_queue()
+    scheduler = rq.get_scheduler()
+    jobs = scheduler.get_jobs()
+    worker = rq.get_worker()
+    
     print('PRINT QUEUE ------------     ---------      ------------    ------ ')
     print('PRINT QUEUE ------------     ---------      ------------    ------ ')
     print('PRINT QUEUE ------------     ---------      ------------    ------ ')
@@ -1242,20 +1314,20 @@ def test_rq(args):
     print('PRINT QUEUE ------------     ---------      ------------    ------ ')
     print('PRINT QUEUE ------------     ---------      ------------    ------ ')
     #flash('QUEUE MESSAGE',category='info')
-    for jobs in queue.jobs:
-
-        print('jobs',jobs)
+    
+    print('job:',jobs, 'queue:', queue, 'scheduler:', scheduler,'worker:', worker)
           
     return queue
 
 
-#test_rq()       
+#test_rq('some args')   
+
 @rq.job('low')
-def message(text):
+def message(text, self):
     flash(text,category='info')
 
 def fire_msg(self,text):
-    job3 = message.schedule(timedelta(seconds=15), text)
+    job3 = message.schedule(timedelta(seconds=15), text, self)
 
 
 def update_rq(source_type):
@@ -1268,3 +1340,53 @@ def update_rq(source_type):
                 }
     file_func[str(source_type)]
 
+
+
+
+
+def remarks():
+    session = db.session
+    files = dict([(str(x.source_type),x.file_source) for x in session.query(SourceFiles).all()])
+
+    source = files['PDB']
+    pdblist = openpyxl.load_workbook(UPLOAD_FOLDER + source)
+    pdblist_ws = pdblist.active
+ 
+    
+    count_pdb = 0
+    remarks = []    
+    for row in pdblist_ws.iter_rows(min_row=2):
+        try:
+            remarks.append(row[18].value)
+            #print(row[5].value, '->', row[18].value)
+            ex_docs = session.query(Pdb).filter(
+                Pdb.client_reference_id == row[18].value
+            ).all()
+            for doc in ex_docs:
+                print(doc.client_reference_id, row[5].value)
+                doc.client_reference_id = row[5].value
+        except:
+            continue
+            #print(row[5].value, '->', "remarks not found")
+        
+        session.commit()
+
+
+#remarks()    
+
+def title_by_pdb():
+    session = db.session
+    doc_list = session.query(Doc_list).all()
+    for doc in doc_list:
+        pdb = session.query(Pdb).filter(
+            Pdb.client_reference_id == doc.client_reference
+        ).order_by(Pdb.transmittal_date.desc()).first()
+        try:
+            doc.title = pdb.title
+            doc.changed_by_fk = '1'
+        except:
+            continue
+    session.commit()
+
+#title_by_pdb()  
+#mdi_rq()

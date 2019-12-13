@@ -2,6 +2,8 @@ import logging
 from flask import Flask
 from flask_appbuilder import SQLA, AppBuilder
 from flask_rq2 import RQ
+from app.index import MyIndexView
+
 
 """
  Logging configuration
@@ -18,7 +20,9 @@ rq = RQ(app)
 #rq.get_scheduler(interval=10)
 #rq.get_worker('default','low')
 
-appbuilder = AppBuilder(app, db.session, base_template='mybase.html')
+appbuilder = AppBuilder(app, db.session, 
+                    base_template='mybase.html',
+                    indexview=MyIndexView)
 
 
 """

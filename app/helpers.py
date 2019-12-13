@@ -205,7 +205,7 @@ def janus_update_document_list(source):
     session.commit()
     return 'done'
 
-@rq.job('low', timeout=15)        
+@rq.job('low', timeout=3600)        
 def janus_update():
     session = db.session
     sf = SourceFiles
@@ -1106,7 +1106,7 @@ def mdi_rq():
 # 
 #mdi_FULL_excel() 
 #   
-@rq.job('low', timeout=15)
+#@rq.job('low', timeout=15)
 def pdb_list_upload2(source):
     session = db.session
     pdblist = openpyxl.load_workbook(UPLOAD_FOLDER + source)
@@ -1188,7 +1188,7 @@ def pdb_list_upload2(source):
     session.commit()
     return str(count_pdb) + ' PDB updated!'
 
-@rq.job('low', timeout=15)
+@rq.job('low', timeout=3600)
 def pdb_update():
     session = db.session
     sf = SourceFiles
@@ -1331,17 +1331,21 @@ def fire_msg(self,text):
 
 
 def update_rq(source_type):
+
+    print('UPDATE By REDIS-SERVER ------------------------- ')
     session = db.session
+    q = rq.get_queue(name='low')
+    
     file_func = {
-                'Document List' : document_list_update.schedule(timedelta(seconds=5)),
-                'PDB' : pdb_update.schedule(timedelta(seconds=5) ),
-                'Janus' : janus_update.schedule(timedelta(seconds=5)),
-                'Categories' : category_update.schedule(timedelta(seconds=5))
+                'Document List' : document_list_update,
+                'PDB' : pdb_update,
+                'Janus' : janus_update,
+                'Categories' : category_update,
                 }
-    file_func[str(source_type)]
-
-
-
+    print(file_func[str(source_type)])
+    
+    q.enqueue_call(file_func[str(source_type)], timeout=3600)
+    flash(str(source_type) + ' updating...',category='info')
 
 
 def remarks():

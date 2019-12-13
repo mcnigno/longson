@@ -11,6 +11,7 @@ from .helpers import (janus_upload, document_list_upload, pdb_list_upload,
 from flask_appbuilder.filemanager import get_file_original_name
 from config import UPLOAD_FOLDER
 from .full_mdi import *
+
 """
     Create your Views::
 
@@ -284,7 +285,7 @@ class SourceFilesView(ModelView):
     add_columns = ['source_type', 'file_source', 'description']
     list_columns = ['source_type', 'file_source', 'description']
 
-    @action("Update2", "Update DB2", "Delete All Data and Update by source File, Really?", "fa-rocket", single=True, multiple=False)
+    @action("Update2", "Update", "Delete All Data and Update by File Source, Really?", "fa-rocket", single=True, multiple=False)
     def update2(self, items): 
         update_rq(items.source_type)
         return redirect(self.get_redirect())
@@ -301,8 +302,9 @@ class MyView(BaseView):
     
     @expose('/new/')
     def mdi_new(self):
-        result = mdi_rq()
-        return result
+        mdi_rq()
+        flash('MDI writing, a new record will be added to the MDI list as soon as possibile.', category='info') 
+        return redirect(self.get_redirect())
 
     @expose('/method1/<string:param1>')
     def method1(self, param1):
@@ -329,13 +331,13 @@ def page_not_found(e):
 db.create_all()
 
 appbuilder.add_view(DocumentListView, "Document", icon="fa-folder-open-o",
-                    category="List", category_icon='fa-envelope')
+                    category="List", category_icon='fa-folder-open-o')
 appbuilder.add_view(JanusView, "Janus", icon="fa-folder-open-o",
-                    category="List", category_icon='fa-envelope')
+                    category="List", category_icon='fa-folder-open-o')
 appbuilder.add_view(PdbView, "PDB", icon="fa-folder-open-o",
-                    category="List", category_icon='fa-envelope')
+                    category="List", category_icon='fa-folder-open-o')
 appbuilder.add_view(MdiView, "MDI", icon="fa-folder-open-o",
-                    category="List", category_icon='fa-envelope')
+                    category="List", category_icon='fa-folder-open-o')
 
 
 
@@ -350,30 +352,30 @@ appbuilder.add_view(MdiView, "MDI", icon="fa-folder-open-o",
 '''
 
 appbuilder.add_view(SourceFilesView, "Source File", icon="fa-folder-open-o",
-                    category="Setting", category_icon='fa-envelope')
+                    category="Setting", category_icon='fa-folder-open-o')
 appbuilder.add_view(SourceFileTypeView, "File Type", icon="fa-folder-open-o",
-                    category="Setting", category_icon='fa-envelope')
+                    category="Setting", category_icon='fa-folder-open-o')
 appbuilder.add_view(MscodeView, "Milestones", icon="fa-folder-open-o",
-                    category="Setting", category_icon='fa-envelope')
+                    category="Setting", category_icon='fa-folder-open-o')
 appbuilder.add_view(JanusmsView, "Janus MS", icon="fa-folder-open-o",
-                    category="Setting", category_icon='fa-envelope')
+                    category="Setting", category_icon='fa-folder-open-o')
 
 appbuilder.add_view(CategoryView, "Category", icon="fa-folder-open-o",
-                    category="Setting", category_icon='fa-envelope')
+                    category="Setting", category_icon='fa-folder-open-o')
 
 
 appbuilder.add_separator(category='Setting')
 
 
 appbuilder.add_view(Setting_updateView, "Setting Update",
-                    icon="fa-folder-open-o", category="Setting", category_icon='fa-envelope')
+                    icon="fa-folder-open-o", category="Setting", category_icon='fa-folder-open-o')
 
 appbuilder.add_link('Document Code Error', '/documentlistview/list/?_flt_0_note=Document+Code+Error',
-                    icon="fa-folder-open-o", category="DCC Check", category_icon='fa-envelope')
+                    icon="fa-folder-open-o", category="DCC Check", category_icon='fa-folder-open-o')
 appbuilder.add_link('PDB Not in Document List', '/pdbview/list/?_flt_0_client_reference=__None',
-                    icon="fa-folder-open-o", category="DCC Check", category_icon='fa-envelope')
+                    icon="fa-folder-open-o", category="DCC Check", category_icon='fa-folder-open-o')
 appbuilder.add_link('Janus Not in Document List', '/janusview/list/?_flt_0_client_reference=__None',
-                    icon="fa-folder-open-o", category="DCC Check", category_icon='fa-envelope')
+                    icon="fa-folder-open-o", category="DCC Check", category_icon='fa-folder-open-o')
 # document_list_upload()
 # janus_upload()
 # pdb_list_upload()

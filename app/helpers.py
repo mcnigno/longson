@@ -285,7 +285,7 @@ def document_list_upload(source):
     print('document_list_upload***')
     session = db.session
 
-    doclist = openpyxl.load_workbook(UPLOAD_FOLDER + source)
+    doclist = openpyxl.load_workbook(UPLOAD_FOLDER + source, data_only=True, read_only=True)
     doclist_ws = doclist.active
     # count_id = 0
     count_doc = 0
@@ -403,7 +403,7 @@ def pdb_replace():
 #pdb_update()
 # Open the Category Code List 
 def category_upload(source):
-    wcb = openpyxl.load_workbook(UPLOAD_FOLDER + source)
+    wcb = openpyxl.load_workbook(UPLOAD_FOLDER + source, data_only=True, read_only=True)
     sheet_list = wcb.sheetnames
     
     session = db.session
@@ -1111,7 +1111,7 @@ def mdi_rq():
 #@rq.job('low', timeout=15)
 def pdb_list_upload2(source):
     session = db.session
-    pdblist = openpyxl.load_workbook(UPLOAD_FOLDER + source)
+    pdblist = openpyxl.load_workbook(UPLOAD_FOLDER + source, data_only=True, read_only=True)
     pdblist_ws = pdblist.active
  
     doc_list = [x.client_reference for x in session.query(Doc_list).all()]

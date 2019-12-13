@@ -318,7 +318,7 @@ class MyView(BaseView):
         return param1
 
 appbuilder.add_view_no_menu(MyView())
-
+appbuilder.add_link('New Mdi','/mdi/new') 
 
 
 @appbuilder.app.errorhandler(404)

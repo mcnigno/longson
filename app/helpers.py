@@ -807,6 +807,8 @@ def mdi_FULL_excel():
     wmb = load_workbook(MDI_template, data_only=True)
     ws = wmb.active
 
+    title_by_pdb()
+
     # For every Category on each document
     categorie_list = session.query(Category).filter(
         Category.code != None, 

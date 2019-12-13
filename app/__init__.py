@@ -21,8 +21,8 @@ rq = RQ(app)
 #rq.get_worker('default','low')
 
 appbuilder = AppBuilder(app, db.session, 
-                    #base_template='mybase.html',
-                    #indexview=MyIndexView
+                    base_template='mybase.html',
+                    indexview=MyIndexView
                     )
 
 

@@ -149,6 +149,7 @@ def janus_upload(source):
                 if row[8].value in doc_list:
                     
                     session.add(janus)
+                    session.commit()
                     count_janus += 1
                 else:
                     
@@ -157,6 +158,7 @@ def janus_upload(source):
                     janus.client_reference_id = None
                     
                     session.add(janus)
+                    session.commit()
                     #janus_not_in_document_list.append(janus)
 
         session.commit()

@@ -22,7 +22,8 @@ rq = RQ(app)
 
 appbuilder = AppBuilder(app, db.session, 
                     base_template='mybase.html',
-                    indexview=MyIndexView)
+                    #indexview=MyIndexView
+                    )
 
 
 """

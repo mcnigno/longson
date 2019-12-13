@@ -83,7 +83,7 @@ def janus_upload_from_txt(source):
 
 def janus_upload(source):
     session = db.session
-    janus_file = openpyxl.load_workbook(UPLOAD_FOLDER + source, data_only=True)
+    janus_file = openpyxl.load_workbook(UPLOAD_FOLDER + source, data_only=True, read_only=True)
     janus_sheet = janus_file.active
     #row_number = 0
     count_janus = 0

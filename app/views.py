@@ -357,8 +357,7 @@ appbuilder.add_view(SourceFileTypeView, "File Type", icon="fa-folder-open-o",
                     category="Setting", category_icon='fa-folder-open-o')
 appbuilder.add_view(MscodeView, "Milestones", icon="fa-folder-open-o",
                     category="Setting", category_icon='fa-folder-open-o')
-appbuilder.add_view(JanusmsView, "Janus MS", icon="fa-folder-open-o",
-                    category="Setting", category_icon='fa-folder-open-o')
+#appbuilder.add_view(JanusmsView, "Janus MS", icon="fa-folder-open-o", category="Setting", category_icon='fa-folder-open-o')
 
 appbuilder.add_view(CategoryView, "Category", icon="fa-folder-open-o",
                     category="Setting", category_icon='fa-folder-open-o')
@@ -367,15 +366,15 @@ appbuilder.add_view(CategoryView, "Category", icon="fa-folder-open-o",
 appbuilder.add_separator(category='Setting')
 
 
-appbuilder.add_view(Setting_updateView, "Setting Update",
-                    icon="fa-folder-open-o", category="Setting", category_icon='fa-folder-open-o')
+#appbuilder.add_view(Setting_updateView, "Setting Update",icon="fa-folder-open-o", category="Setting", category_icon='fa-folder-open-o')
 
-appbuilder.add_link('Document Code Error', '/documentlistview/list/?_flt_0_note=Document+Code+Error',
+#appbuilder.add_link('Document Code Error', '/documentlistview/list/?_flt_0_note=Document+Code+Error',icon="fa-folder-open-o", category="DCC Check", category_icon='fa-folder-open-o')
+
+appbuilder.add_link('PDB Excluded', '/pdbview/list/?_flt_0_client_reference=__None',
                     icon="fa-folder-open-o", category="DCC Check", category_icon='fa-folder-open-o')
-appbuilder.add_link('PDB Not in Document List', '/pdbview/list/?_flt_0_client_reference=__None',
-                    icon="fa-folder-open-o", category="DCC Check", category_icon='fa-folder-open-o')
-appbuilder.add_link('Janus Not in Document List', '/janusview/list/?_flt_0_client_reference=__None',
-                    icon="fa-folder-open-o", category="DCC Check", category_icon='fa-folder-open-o')
+
+#appbuilder.add_link('Janus Not in Document List', '/janusview/list/?_flt_0_client_reference=__None', icon="fa-folder-open-o", category="DCC Check", category_icon='fa-folder-open-o')
+
 # document_list_upload()
 # janus_upload()
 # pdb_list_upload()

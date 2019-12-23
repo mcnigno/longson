@@ -313,14 +313,32 @@ def document_list_upload(source):
                 print('Document',row[2].value)
                 session.add(doclist_row)
             
+            if row[2].value and doc:
+                doc.cat=row[0].value
+                doc.title=row[3].value
+                doc.org=row[5].value
+                doc.cat_class=row[6].value
+                doc.class_two=row[7].value
+                doc.weight=row[8].value
+                doc.doc_reference=row[12].value
+                doc.changed_by_fk = '1'
+                count_doc += 1
+            
+        ft = session.query(Sourcetype).filter(Sourcetype.source_type == 'Document List').first()
+        fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first() 
+        fs.description = 'READY'
+        fs.changed_by_fk = '1'   
         print('Document in DC processed', count_doc)
         session.commit()
         
         return str(count_doc) + ' Document List updated!'
     except:
+        fs.description = 'FAIL'
+        fs.changed_by_fk = '1'   
+        session.commit()
         return 'Document List FAIL: check your source file.'
 
-@rq.job('low', timeout=15)
+@rq.job('low', timeout=3600)
 def document_list_update():
     session = db.session
     sf = SourceFiles
@@ -808,6 +826,7 @@ def mdi_FULL_excel():
     ws = wmb.active
 
     title_by_pdb()
+    update_doc_class()
 
     # For every Category on each document
     categorie_list = session.query(Category).filter(
@@ -1089,7 +1108,7 @@ def new_MDI():
     #print('document list len:', len(document_list))
 
 from rq_scheduler import Scheduler
-from rq import Queue
+from rq import Queue, Worker
 
 def mdi_rq():
     print(' ------  RQ MDI  ------ ')
@@ -1265,7 +1284,7 @@ def update_all():
 #update_all() 
 from .models import Category
 
-@rq.job('low', timeout=15)
+@rq.job('low', timeout=3600)
 def update_doc_class():
 
     session = db.session
@@ -1281,7 +1300,7 @@ def update_doc_class():
             
 
         except:
-            print('error', document)
+            print('Category Class Not Found for: ', document)
     session.commit()
 
 #update_doc_class()
@@ -1334,10 +1353,12 @@ def fire_msg(self,text):
     job3 = message.schedule(timedelta(seconds=15), text, self)
 
 
-def update_rq(source_type):
+
+
+def update_rq(self,id, source_type):
 
     print('UPDATE By REDIS-SERVER ------------------------- ')
-    session = db.session
+    #session = db.session
     q = rq.get_queue(name='low')
     
     file_func = {
@@ -1348,9 +1369,11 @@ def update_rq(source_type):
                 }
     print(file_func[str(source_type)])
     
-    q.enqueue_call(file_func[str(source_type)], timeout=3600)
+    job = q.enqueue_call(file_func[str(source_type)], timeout=3600)
+    
+    
     flash(str(source_type) + ' updating...',category='info')
-
+    return job.id
 
 def remarks():
     session = db.session

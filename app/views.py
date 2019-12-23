@@ -201,7 +201,7 @@ class JanusView(ModelView):
 class DocumentListView(ModelView):
     datamodel = SQLAInterface(Doc_list)
     add_columns = ['doc_reference', 'client_reference', 'title']
-    list_columns = ['doc_reference', 'client_reference', 'title']
+    list_columns = ['org', 'client_reference', 'title']
     show_columns = ['doc_reference', 'client_reference', 'title',
                     'cat', 'org', 'weight', 'cat_class', 'class_two','mdi']
     search_columns = ['client_reference','note']
@@ -235,7 +235,7 @@ class MscodeView(ModelView):
 
 class CategoryView(ModelView):
     datamodel = SQLAInterface(Category)
-    list_columns = ['sheet_name', 'code', 'description']
+    list_columns = ['document_class', 'code', 'information']
 
 
 '''
@@ -287,7 +287,7 @@ class SourceFilesView(ModelView):
 
     @action("Update2", "Update", "Delete All Data and Update by File Source, Really?", "fa-rocket", single=True, multiple=False)
     def update2(self, items): 
-        update_rq(items.source_type)
+        update_rq(self,items.id,items.source_type)
         return redirect(self.get_redirect())
 
 class MdiView(ModelView):

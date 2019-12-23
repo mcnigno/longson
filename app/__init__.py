@@ -17,8 +17,9 @@ app.config.from_object('config')
 db = SQLA(app)
 
 rq = RQ(app)
+rq.queues.append('low')
 #rq.get_scheduler(interval=10)
-#rq.get_worker('default','low')
+rq.get_worker('default','low')
 
 appbuilder = AppBuilder(app, db.session, 
                     base_template='mybase.html',

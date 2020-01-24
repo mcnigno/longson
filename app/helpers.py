@@ -95,8 +95,10 @@ def janus_upload(source):
     doc_list = [x.client_reference for x in doclist_query]
     
     print('Doc list Ready')
+    janus_row_fail = 1
     try:
         for row in janus_sheet.iter_rows(min_row=2):
+            janus_row_fail += 1
             print('janus___rowww            ****************',
                     row[8].value,
                     row[0].value,
@@ -145,25 +147,42 @@ def janus_upload(source):
                 
                 
                 # Check if the janus doc is or not in document list 
+                try:
+                    if row[8].value in doc_list:
+                        
+                        session.add(janus)
+                        session.commit()
+                        count_janus += 1
+                    else:
+                        
+                        janus.ex_client_reference = row[8].value
+                        janus.note = str(janus.client_reference_id) + ' | No reference in Document List.'
+                        janus.client_reference_id = None
+                        
+                        session.add(janus)
+                        session.commit()
+                        #janus_not_in_document_list.append(janus)
                 
-                if row[8].value in doc_list:
-                    
-                    session.add(janus)
+                        #session.commit()
+                        #return str(count_janus) + ' Janus Updated'
+                        session.remove()
+                        ft = session.query(Sourcetype).filter(Sourcetype.source_type == source).first()
+                        fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first() 
+                        fs.description = 'READY ->' + str(janus_row_fail)
+                        fs.changed_by_fk = '1'    
+                        session.commit()
+                except:
+                    session.remove()
+                    ft = session.query(Sourcetype).filter(Sourcetype.source_type == source).first()
+                    fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first() 
+                    fs.description = 'FAIL on row ' + str(row_fail)+ ' - check your doc -> ' + row[8].value
+                    fs.changed_by_fk = '1'    
                     session.commit()
-                    count_janus += 1
-                else:
-                    
-                    janus.ex_client_reference = row[8].value
-                    janus.note = str(janus.client_reference_id) + ' | No reference in Document List.'
-                    janus.client_reference_id = None
-                    
-                    session.add(janus)
-                    session.commit()
-                    #janus_not_in_document_list.append(janus)
-
-        session.commit()
-        return str(count_janus) + ' Janus Updated'
+                    return 'Janus FAIL: check your source file.'
+                
+        
     except:
+        
         return 'Janus FAIL: check your source file'
 
 def janus_update_document_list(source):
@@ -291,8 +310,10 @@ def document_list_upload(source):
     count_doc = 0
     # wrong_ref = session.query(Doc_list).filter(Doc_list.client_reference == 'wrong_client_ref').first()
     # empty_client_references = session.query(Doc_list).filter(Doc_list.client_reference == 'EmptyClientReferences').first()            
+    row_fail = 1
     try:    
         for row in doclist_ws.iter_rows(min_row=2):
+            row_fail += 1
             doc = session.query(Doc_list).filter(
                 Doc_list.client_reference == row[2].value
             ).first()
@@ -323,28 +344,40 @@ def document_list_upload(source):
                 doc.doc_reference=row[12].value
                 doc.changed_by_fk = '1'
                 count_doc += 1
-            
+            session.commit()
+
         ft = session.query(Sourcetype).filter(Sourcetype.source_type == 'Document List').first()
         fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first() 
         fs.description = 'READY'
         fs.changed_by_fk = '1'   
         print('Document in DC processed', count_doc)
-        session.commit()
         
+        session.commit()
         return str(count_doc) + ' Document List updated!'
     except:
-        fs.description = 'FAIL'
-        fs.changed_by_fk = '1'   
+        session.remove()
+        ft = session.query(Sourcetype).filter(Sourcetype.source_type == 'Document List').first()
+        fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first() 
+        fs.description = 'FAIL on row ' + str(row_fail)+ ' - check your doc -> ' + row[2].value
+        fs.changed_by_fk = '1'    
         session.commit()
         return 'Document List FAIL: check your source file.'
 
+from rq import Worker, Queue, Connection
+
 @rq.job('low', timeout=3600)
 def document_list_update():
-    session = db.session
+    '''
+    with Connection():
+        low_worker = Worker(['low'])
+        low_worker.work()
+    '''
+    session = db.session  
     sf = SourceFiles
     files = dict([(str(x.source_type),x.file_source) for x in session.query(sf).all()])
 
     doc = document_list_upload(files['Document List'])
+    session.close()
 
 #document_list_update()
  
@@ -992,8 +1025,8 @@ def mdi_FULL_excel():
                                 
                                 # Moved below
                                 #first_match = False
-                                if pdb_doc:
-                                    janus_document.pdb_id = pdb_doc.id
+                                #if pdb_doc:
+                                #    janus_document.pdb_id = pdb_doc.id
                             # If Issue Actual is there take it instead the revised plan
                             if doc.transmittal_date and first_match:
                                 revised_plan = doc.transmittal_date
@@ -1137,9 +1170,9 @@ def pdb_list_upload2(source):
  
     doc_list = [x.client_reference for x in session.query(Doc_list).all()]
     count_pdb = 0
-               
+    row_fail = 1         
     for row in pdblist_ws.iter_rows(min_row=2):
-        
+        row_fail += 1
         pdb = Pdb(
             doc_reference=row[0].value,
             title=row[1].value,
@@ -1207,9 +1240,20 @@ def pdb_list_upload2(source):
             '''
         
         session.add(pdb)
-
-    session.commit()
-    return str(count_pdb) + ' PDB updated!'
+        try:
+            session.commit()
+            
+        except:
+            session.remove()
+            ft = session.query(Sourcetype).filter(Sourcetype.source_type == source).first()
+            fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first() 
+            fs.description = 'FAIL on row ' + str(row_fail)+ ' - check your doc -> ' + row[5].value
+            fs.changed_by_fk = '1'    
+            session.commit()
+            return 'PDB FAIL: check your source file.'
+            
+      
+    
 
 @rq.job('low', timeout=3600)
 def pdb_update():

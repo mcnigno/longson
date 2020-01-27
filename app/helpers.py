@@ -166,14 +166,14 @@ def janus_upload(source):
                         #session.commit()
                         #return str(count_janus) + ' Janus Updated'
                         session.remove()
-                        ft = session.query(Sourcetype).filter(Sourcetype.source_type == source).first()
+                        ft = session.query(Sourcetype).filter(Sourcetype.source_type == 'Janus').first()
                         fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first() 
                         fs.description = 'READY ->' + str(janus_row_fail)
                         fs.changed_by_fk = '1'    
                         session.commit()
                 except:
                     session.remove()
-                    ft = session.query(Sourcetype).filter(Sourcetype.source_type == source).first()
+                    ft = session.query(Sourcetype).filter(Sourcetype.source_type == 'Janus').first()
                     fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first() 
                     fs.description = 'FAIL on row ' + str(janus_row_fail)+ ' - check your file @ -> ' + row[1].value
                     fs.changed_by_fk = '1'    

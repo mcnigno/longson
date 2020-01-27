@@ -175,7 +175,7 @@ def janus_upload(source):
                     session.remove()
                     ft = session.query(Sourcetype).filter(Sourcetype.source_type == source).first()
                     fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first() 
-                    fs.description = 'FAIL on row ' + str(row_fail)+ ' - check your doc -> ' + row[8].value
+                    fs.description = 'FAIL on row ' + str(janus_row_fail)+ ' - check your file @ -> ' + row[1].value
                     fs.changed_by_fk = '1'    
                     session.commit()
                     return 'Janus FAIL: check your source file.'

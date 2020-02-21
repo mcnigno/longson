@@ -84,6 +84,7 @@ class Pdb(Model):
     client_transmittal_ref_number = Column(String(255))
     remarks = Column(String(255))
     note = Column(String(255))
+    document_class = Column(String(10))
 
     def __init__(self, **kwargs):
         super(Pdb, self).__init__(**kwargs)

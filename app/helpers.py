@@ -928,11 +928,13 @@ def mdi_FULL_excel():
                     org =  document.org #value['org']
                 document_no = document.client_reference
                 document_name = document.title
-                
+                pdb_document = session.query(Pdb).filter(Pdb.client_reference_id == document.client_reference ).first()
                 classification= ''
-                if document.cat_class:
+                if pdb_document:   
+                    classification = 'Class '+  pdb_document.document_class
+                else:
                     classification = 'Class '+  document.cat_class
-                
+
 
                 #print(document)
 
@@ -1190,6 +1192,7 @@ def pdb_list_upload2(source):
             document_status=row[13].value,
             client_transmittal_ref_number=row[14].value,
             remarks=row[15].value,
+            document_class=row[17].value
         )
         pdb.created_by_fk = '1'
         

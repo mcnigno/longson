@@ -59,7 +59,7 @@ from .helpers import test_rq, fire_msg
 class PdbView(ModelView):
     datamodel = SQLAInterface(Pdb)
     list_columns = ['ex_client_reference', 'client_reference', 'doc_reference',
-                    'revision_number', 'document_revision_object']
+                    'revision_number', 'document_revision_object','document_class']
  
     edit_columns = ['ex_client_reference', 'client_reference', 'doc_reference',
                     'title','revision_number', 'document_revision_object']

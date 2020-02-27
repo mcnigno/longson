@@ -930,9 +930,10 @@ def mdi_FULL_excel():
                 document_name = document.title
                 pdb_document = session.query(Pdb).filter(Pdb.client_reference_id == document.client_reference ).first()
                 classification= ''
-                if pdb_document.document_class is not None:
+
+                try:
                     classification = 'Class '+  pdb_document.document_class
-                else:
+                except:
                     classification = 'Class '+  document.cat_class
 
 

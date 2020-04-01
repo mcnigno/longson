@@ -1259,7 +1259,7 @@ def pdb_list_upload2(source):
       
     
 
-@rq.job('low', timeout=3600)
+@rq.job('low', timeout=36000)
 def pdb_update():
     session = db.session
     sf = SourceFiles

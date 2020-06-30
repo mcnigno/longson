@@ -96,24 +96,29 @@ def janus_upload(source):
     
     print('Doc list Ready')
     janus_row_fail = 1
+    ft = session.query(Sourcetype).filter(Sourcetype.source_type == 'Janus').first()
+    fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first()
+    fs.description = "Started "
+    fs.changed_by_fk = '1'
     try:
+        
         for row in janus_sheet.iter_rows(min_row=2):
             janus_row_fail += 1
-            print('janus___rowww            ****************',
+            print('janus',
                     row[8].value,
                     row[0].value,
                     row[1].value,
                     row[2].value,
                     )
             if row[32].value != 'NOT APPLICABLE':
-                print('BEFORE PLANNED DATE')
-                print(type(row[31].value), row[31].value == '#N/A')
+                #print('BEFORE PLANNED DATE')
+                #print(type(row[31].value), row[31].value == '#N/A')
                 planned_date = row[31].value
                 if row[31].value == '#N/A':
-                    print('setting planning date')
+                    #print('setting planning date')
                     planned_date = None
                     #planned_date = date_parse(row[32].value)
-                print('AFTER PLANNED DATE', planned_date)
+                #print('AFTER PLANNED DATE', planned_date)
                 
                 
                 janus = Janus(
@@ -140,7 +145,7 @@ def janus_upload(source):
                     pdb_issue=row[32].value,
                     revised_plan_date=row[33].value
                 )  
-                print('janus___rowww    NOT APPLICABLE        ****************')
+                #print('janus___rowww    NOT APPLICABLE        ****************')
                 janus.created_by_fk = '1'
                 
                 janus.client_reference_id = row[8].value 
@@ -154,6 +159,7 @@ def janus_upload(source):
                         session.commit()
                         count_janus += 1
                     else:
+                        print(row[8].value, 'NOT IN DOCLIST')
                         
                         janus.ex_client_reference = row[8].value
                         janus.note = str(janus.client_reference_id) + ' | No reference in Document List.'
@@ -165,24 +171,38 @@ def janus_upload(source):
                 
                         #session.commit()
                         #return str(count_janus) + ' Janus Updated'
+
                         session.remove()
-                        ft = session.query(Sourcetype).filter(Sourcetype.source_type == 'Janus').first()
-                        fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first() 
-                        fs.description = 'READY ->' + str(janus_row_fail)
+                        print('Debug3')
+                        info = 'NO REF -> ' + str(janus_row_fail)
+                        fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first()
+                        fs.description = info
+                        print('Debug3b')
                         fs.changed_by_fk = '1'    
                         session.commit()
+                        print('Debug4')
                 except:
                     session.remove()
-                    ft = session.query(Sourcetype).filter(Sourcetype.source_type == 'Janus').first()
+                    #ft = session.query(Sourcetype).filter(Sourcetype.source_type == 'Janus').first()
                     fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first() 
                     fs.description = 'FAIL on row ' + str(janus_row_fail)+ ' - check your file @ -> ' + row[1].value
                     fs.changed_by_fk = '1'    
                     session.commit()
                     return 'Janus FAIL: check your source file.'
                 
-        
+        ft = session.query(Sourcetype).filter(Sourcetype.source_type == 'Janus').first()
+        fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first()
+
+        fs.description = 'Updated'
+        fs.changed_by_fk = '1'    
+        session.commit()    
     except:
-        
+        ft = session.query(Sourcetype).filter(Sourcetype.source_type == 'Janus').first()
+        fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first()
+
+        fs.description = 'FAIL on row ' + str(janus_row_fail)+ ' - check your file @ -> ' + str(row[1].value)
+        fs.changed_by_fk = '1'    
+        session.commit()
         return 'Janus FAIL: check your source file'
 
 def janus_update_document_list(source):

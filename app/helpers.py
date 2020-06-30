@@ -909,7 +909,7 @@ def mdi_FULL_excel():
         font = Font(b=True, color="000000")
         al = Alignment(horizontal="left", vertical="center")
         
-        cat_ranges = 'A'+ str(start_row)+':E'+str(start_row)
+        cat_ranges = 'A'+ str(start_row)+':E'+str(start_row) 
         #org_range = 'B'+ str(start_row+1)+':B'+str(start_row+8)
         style_range(ws, cat_ranges, border=border, fill=fill, font=font, alignment=al,first_cell=ws.cell(start_row,1))
         _class.fill = fill
@@ -924,7 +924,7 @@ def mdi_FULL_excel():
         
         # Style The Category Header
         x = 7
-        for n in range(13):
+        for n in range(14):
             n = ws.cell(row=start_row, column=x)
             n.border = border
             n.fill = fill
@@ -1003,8 +1003,9 @@ def mdi_FULL_excel():
                  
                 if pdb_document: 
                     first_match = True
-                    issue_type_for = ''
-                    for x, doc in pdb_document:
+                    issue_type_for = '' 
+                    
+                    for x, doc in pdb_document[-12:]:  
                         if doc.client_reference_id == 'OL1-2C13-251000':
                             print(doc.client_reference_id)
                         # Issue and Revised Date only on the first janus match

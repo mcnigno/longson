@@ -1005,7 +1005,7 @@ def mdi_FULL_excel():
                     first_match = True
                     issue_type_for = '' 
                     
-                    for x, doc in pdb_document[-12:]:  
+                    for x, doc in pdb_document[-13:]:  
                         if doc.client_reference_id == 'OL1-2C13-251000':
                             print(doc.client_reference_id)
                         # Issue and Revised Date only on the first janus match

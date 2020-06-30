@@ -278,7 +278,7 @@ class SourceFileTypeView(ModelView):
     datamodel = SQLAInterface(Sourcetype)
     list_columns = ['source_type', 'description']
 
-    
+from datetime import datetime
 
 class SourceFilesView(ModelView):
     datamodel = SQLAInterface(SourceFiles)
@@ -286,7 +286,13 @@ class SourceFilesView(ModelView):
     list_columns = ['source_type', 'file_source', 'description']
 
     @action("Update2", "Update", "Delete All Data and Update by File Source, Really?", "fa-rocket", single=True, multiple=False)
-    def update2(self, items): 
+    def update2(self, items):
+        session = db.session
+        #ft = session.query(Sourcetype).filter(Sourcetype.source_type == 'Document List').first()
+        #fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first() 
+        items.description = "Started " + '{0:%d-%m-%Y %H:%M:%S}'.format(datetime.now()) + " by " + str(items.changed_by)
+        #fs.changed_by_fk = '1' 
+        session.commit() 
         update_rq(self,items.id,items.source_type)
         return redirect(self.get_redirect())
 

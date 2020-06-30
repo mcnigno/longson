@@ -13,7 +13,7 @@ from .full_mdi import full_mdi, full_mdi_last_rev, fulmdi2, fulmdi3
 from app import rq
 
 
-from datetime import timedelta
+from datetime import timedelta, time
 
 janus_not_in_document_list = []
 pdb_not_in_document_list = []
@@ -90,16 +90,13 @@ def janus_upload(source):
     # Set the document list with all janus document
     #documents = janus_update_document_list(source)
     
-    print('******    ******   Document list updated')
+    print('******    ******   Janus list updated')
     doclist_query = session.query(Doc_list).all()
     doc_list = [x.client_reference for x in doclist_query]
     
     print('Doc list Ready')
     janus_row_fail = 1
-    ft = session.query(Sourcetype).filter(Sourcetype.source_type == 'Janus').first()
-    fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first()
-    fs.description = "Started "
-    fs.changed_by_fk = '1'
+     
     try:
         
         for row in janus_sheet.iter_rows(min_row=2):
@@ -193,7 +190,7 @@ def janus_upload(source):
         ft = session.query(Sourcetype).filter(Sourcetype.source_type == 'Janus').first()
         fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first()
 
-        fs.description = 'Updated'
+        fs.description = 'Updated ' + '{0:%d-%m-%Y %H:%M:%S}'.format(datetime.now())
         fs.changed_by_fk = '1'    
         session.commit()    
     except:
@@ -320,10 +317,10 @@ def date_parse(date):
         print('something Wrong with DATE PARSE')
         return None
 
-def document_list_upload(source):
+def document_list_upload(source): 
     print('document_list_upload***')
     session = db.session
-
+    
     doclist = openpyxl.load_workbook(UPLOAD_FOLDER + source, data_only=True, read_only=True)
     doclist_ws = doclist.active
     # count_id = 0
@@ -368,7 +365,7 @@ def document_list_upload(source):
 
         ft = session.query(Sourcetype).filter(Sourcetype.source_type == 'Document List').first()
         fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first() 
-        fs.description = 'READY'
+        fs.description = 'Updated ' + '{0:%d-%m-%Y %H:%M:%S}'.format(datetime.now())
         fs.changed_by_fk = '1'   
         print('Document in DC processed', count_doc)
         
@@ -383,7 +380,7 @@ def document_list_upload(source):
         session.commit()
         return 'Document List FAIL: check your source file.'
 
-from rq import Worker, Queue, Connection
+from rq import Worker, Queue, Connection 
 
 @rq.job('low', timeout=3600)
 def document_list_update():
@@ -1276,7 +1273,11 @@ def pdb_list_upload2(source):
             session.commit()
             return 'PDB FAIL: check your source file.'
             
-      
+    ft = session.query(Sourcetype).filter(Sourcetype.source_type == 'PDB').first()
+    fs = session.query(SourceFiles).filter(SourceFiles.source_type_id == ft.id).first() 
+    fs.description = 'Updated ' + '{0:%d-%m-%Y %H:%M:%S}'.format(datetime.now())
+    fs.changed_by_fk = '1'    
+    session.commit()  
     
 
 @rq.job('low', timeout=36000)
